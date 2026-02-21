@@ -1,5 +1,5 @@
 # Shared Worktree Policy
-Last Updated: 2026-02-16 12:20 CET
+Last Updated: 2026-02-21 01:40 CET
 
 Use this file as the default policy for worktree handling across agents.
 
@@ -8,6 +8,14 @@ Use this file as the default policy for worktree handling across agents.
 - Prefer resolving branch-switch blockers inside the current assigned worktree.
 - If local tracked changes block branch switch and a commit will safely resolve it, commit with a clear message and continue.
 - If commit is unsafe or ambiguous, stop and ask the user how to proceed.
+
+## Dedicated Worker Slots
+- Preferred orchestration model is dedicated slot worktrees:
+  - `dev-1`, `dev-2`, `dev-3`, `test-1`, `review-1`
+- One slot must keep one stable worktree path during a sprint cycle.
+- Inside each slot worktree, each task must use its own feature branch:
+  - branch format: `codex/<slot>/<issue-or-task-id>`
+- Never run two different active tasks on the same branch.
 
 ## Safe Auto-Commit Rule
 Agent may auto-commit blocked local changes only when all conditions are true:

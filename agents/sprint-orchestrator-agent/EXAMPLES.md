@@ -1,68 +1,48 @@
 # Examples
 
-Use these as starting points. Adapt sprint scope, dependencies, and merge policy to your repository.
-
-## Example 1: Linear-First Sprint Orchestration
+## Example 1: Adaptive Overnight Orchestration
 
 ### Input
 ```text
 Agent: sprint-orchestrator-agent
-Goal: Orchestrate Sprint 31 from Jira export and publish role packets directly to Linear issues.
-Inputs: Sprint task source: /inputs/jira/sprint-31.csv
-Inputs: Agent root path: /agents
-Inputs: Standards source: /agents/agent-making-agent/README.md
+Goal: Keep sprint execution moving overnight with background workers and 5-minute control cycles.
+Inputs: Sprint task source: Linear project "Ouroboros" issues MYO-45..MYO-70
 Inputs: tracking_mode: linear
-Inputs: tracking_contract_path: /Users/slobodan/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md
-Inputs: linear_comment_schema_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
-Inputs: linear_workflow_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md
-Inputs: worktree_policy_path: /Users/slobodan/Projects/Agents/agents/_shared/WORKTREE_POLICY.md
-Inputs: Team capacity constraints: max 5 active units, risk-first ordering.
-Inputs: Merge mode: sequential
-Inputs: review_required: false
-Inputs: pr_base_branch: main
-Inputs: Handoff policy: developer -> tester -> PR-ready (optional review only when requested)
-Constraints: Planning/orchestration only. Do not execute task implementation. Publish `DEV_TASK` and `TEST_TASK` packets as `AGENT_EVENT_V1` comments on each Linear issue. Publish `REVIEW_TASK` only when explicitly requested. Create pull requests for done units and include task description + expected outcome from issue/task packet in PR body. Keep PR body intent-only and do not include git diff summaries.
-Output: /reports/SPRINT_PLAN.md, /reports/SPRINT_ISSUE_PACKETS.md, /reports/SPRINT_MERGE_PLAN.md, /reports/SPRINT_MERGE_RESULT.md
+Inputs: dispatch_skill_path: /Users/slobodan/.codex/skills/thread-dispatch/SKILL.md
+Inputs: sleep_skill_path: /Users/slobodan/.codex/skills/sleep/SKILL.md
+Inputs: poll_interval_minutes: 5
+Inputs: Developer scaling rule: ready=1-2 -> 1 dev, ready=3-10 -> 2 devs, ready>10 -> 3 devs
+Inputs: Worker slot policy: dedicated worktree per slot + per-task feature branch
+Inputs: Start gates: tester after first dev DONE, reviewer after first tester DONE
+Constraints: Planning/orchestration only. Launch and monitor background workers; no implementation coding.
+Output: /reports/SPRINT_PLAN.md, /reports/SPRINT_AGENT_ACTIVATIONS.md, /reports/SPRINT_EXECUTION_LOG.md, /reports/SPRINT_MERGE_PLAN.md, /reports/SPRINT_MERGE_RESULT.md
 ```
 
 ### Expected Output
 ```text
-Creates /reports/SPRINT_PLAN.md with UOW IDs, dependencies, priorities, and mapped agents.
-Posts structured `DEV_TASK`/`TEST_TASK` packets to each issue with packet_version, and `REVIEW_TASK` only when requested.
-Creates /reports/SPRINT_ISSUE_PACKETS.md manifest containing packet routing and versions.
-Creates pull requests for done units and ensures PR body includes task description and expected outcome, without git diff summaries.
-Creates /reports/SPRINT_MERGE_PLAN.md with deterministic merge order and gate checks.
-Creates /reports/SPRINT_MERGE_RESULT.md for merge progress tracking.
+Orchestrator computes ready queue, starts only required number of developer workers, and scales up/down as queue changes.
+Tester is started only after first developer completion handoff is recorded.
+Reviewer is started only after first tester completion handoff is recorded.
+Every 5 minutes orchestrator posts control summary in visible chat and refreshes report snapshots.
 ```
 
-## Example 2: Local Fallback Orchestration (No Linear)
+## Example 2: Small Queue, Minimal Parallelism
 
 ### Input
 ```text
 Agent: sprint-orchestrator-agent
-Goal: Plan carry-over sprint work without Linear connectivity.
-Inputs: Sprint task source: /inputs/backlog/carry-over.md
-Inputs: Agent root path: /agents
-Inputs: Standards source: /agents/agent-making-agent/README.md
-Inputs: tracking_mode: local
-Inputs: tracking_contract_path: /Users/slobodan/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md
-Inputs: linear_comment_schema_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
-Inputs: linear_workflow_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md
-Inputs: worktree_policy_path: /Users/slobodan/Projects/Agents/agents/_shared/WORKTREE_POLICY.md
-Inputs: Team capacity constraints: max 3 parallel units.
-Inputs: Merge mode: batch
-Inputs: review_required: true
-Inputs: pr_base_branch: main
-Inputs: Handoff policy: developer -> tester -> review -> PR-ready
-Constraints: Planning/orchestration only. Write packet files under `/reports/issues/<ISSUE-ID>/` and initialize local state/event files. Create pull requests for done units and include task description + expected outcome from local issue packet in PR body. Keep PR body intent-only and do not include git diff summaries.
-Output: /reports/SPRINT_PLAN.md, /reports/SPRINT_ISSUE_PACKETS.md, /reports/SPRINT_MERGE_PLAN.md, /reports/SPRINT_MERGE_RESULT.md
+Goal: Orchestrate only four ready tasks safely with minimal concurrency.
+Inputs: Sprint task source: MYO-81..MYO-84
+Inputs: tracking_mode: linear
+Inputs: poll_interval_minutes: 5
+Inputs: Developer scaling rule: ready=1-2 -> 1 dev, ready=3-10 -> 2 devs, ready>10 -> 3 devs
+Constraints: Keep dependency order strict; no coding work in orchestrator.
+Output: /reports/SPRINT_PLAN.md, /reports/SPRINT_AGENT_ACTIVATIONS.md, /reports/SPRINT_EXECUTION_LOG.md, /reports/SPRINT_MERGE_PLAN.md, /reports/SPRINT_MERGE_RESULT.md
 ```
 
 ### Expected Output
 ```text
-Creates /reports/SPRINT_PLAN.md with UOW IDs and routing.
-Creates per-issue packet files (`DEV_TASK.yaml`, `TEST_TASK.yaml`, and optional `REVIEW_TASK.yaml` when requested) under /reports/issues/<ISSUE-ID>/.
-Initializes /reports/issues/<ISSUE-ID>/state.yaml and /reports/issues/<ISSUE-ID>/events.jsonl.
-Creates pull requests for done units with task description and expected outcome in PR body, without git diff summaries.
-Creates /reports/SPRINT_ISSUE_PACKETS.md manifest and merge plan/result reports.
+Orchestrator starts exactly two developers (not three), because ready tasks are between 3 and 10.
+Each developer is assigned a dedicated worktree and per-task feature branch.
+Tester and reviewer start only after their gate events are satisfied.
 ```
