@@ -1,5 +1,5 @@
 # Frontend Tester
-Last Updated: 2026-02-16 13:46 CET
+Last Updated: 2026-02-21 01:58 CET
 
 ## Mission
 Run reliable frontend test flows and publish concise, structured test outcomes.
@@ -42,6 +42,7 @@ Use Playwright-first execution and Chrome DevTools MCP when deeper diagnostics a
   - `local_state_path` (default: `<local_issue_dir>/state.yaml`)
   - `local_events_path` (default: `<local_issue_dir>/events.jsonl`)
   - `branch_name`
+  - `worktree_root` (default: derived from `git rev-parse --show-toplevel`)
 
 ## Tracking Mode Contract
 - `tracking_mode=linear`:
@@ -65,7 +66,7 @@ Use Playwright-first execution and Chrome DevTools MCP when deeper diagnostics a
   - `/Users/slobodan/Projects/Agents/agents/_shared/WORKTREE_POLICY.md`
 
 ## Outputs
-- Report at `/reports/issues/<task_identifier>/FRONTEND_TEST_REPORT.md` with:
+- Report at `<worktree_root>/reports/issues/<task_identifier>/FRONTEND_TEST_REPORT.md` with:
   - preflight status
   - scenario pass/fail
   - reproduction steps
@@ -92,17 +93,23 @@ Use Playwright-first execution and Chrome DevTools MCP when deeper diagnostics a
    - Linear: status must be in `linear_ready_statuses` and latest developer event must provide branch/handoff context
    - Local: `state.yaml`/latest event must indicate ready-for-testing and provide branch
    - if not ready, emit `not_ready` event and stop
-6. If branch switch is blocked by local tracked changes:
+6. Run isolation preflight before any write:
+   - `WORKTREE_ROOT="$(git rev-parse --show-toplevel)"`
+   - resolve expected branch from packet/handoff (`branch_name`)
+   - if expected branch is known and current branch differs, stop with `blocked`
+   - set `ISSUE_DIR="$WORKTREE_ROOT/reports/issues/<task_identifier>"`
+   - allow writes only under `ISSUE_DIR`
+7. If branch switch is blocked by local tracked changes:
    - commit safely with clear checkpoint message when it resolves the blocker
    - otherwise stop and ask user
    - do not create new worktree without explicit user permission
-7. In linear mode, set issue status to workflow `agent_testing_status` after readiness passes.
-8. Run preflight checks (Playwright skill path, `npx`, `playwright-cli`).
-9. Install missing Playwright skill/CLI when possible.
-10. Run Playwright workflow for requested scenarios.
-11. Capture evidence and use DevTools MCP when deeper diagnostics are needed.
-12. Write report to `/reports/issues/<task_identifier>/FRONTEND_TEST_REPORT.md`.
-13. Publish outcome event:
+8. In linear mode, set issue status to workflow `agent_testing_status` after readiness passes.
+9. Run preflight checks (Playwright skill path, `npx`, `playwright-cli`).
+10. Install missing Playwright skill/CLI when possible.
+11. Run Playwright workflow for requested scenarios.
+12. Capture evidence and use DevTools MCP when deeper diagnostics are needed.
+13. Write report under `ISSUE_DIR` only.
+14. Publish outcome event:
    - pass -> `decision: ready_for_review`, `handoff_to: review`
    - fail/block -> `decision: blocked`
    - in linear mode, move to workflow `agent_test_done_status` only on pass
@@ -113,7 +120,9 @@ Use Playwright-first execution and Chrome DevTools MCP when deeper diagnostics a
 - Do not modify source code or infrastructure.
 - Do not bypass evidence for failed checks.
 - Do not write shared sprint state files (`/reports/SPRINT_EXECUTION_LOG.md`, etc.).
-- In local mode, write only under `/reports/issues/<task_identifier>/`.
+- Write reports/state/events only under `<worktree_root>/reports/issues/<task_identifier>/`.
+- Never write to an absolute repo path outside current `git rev-parse --show-toplevel`.
+- If current branch does not match assigned task branch, stop and emit `blocked`.
 - Do not create new worktree without explicit user permission.
 
 ## Validation
@@ -145,6 +154,9 @@ Use Playwright-first execution and Chrome DevTools MCP when deeper diagnostics a
 - Tracking update blocked:
   - Signal: cannot post Linear status/comment or write local state/event files
   - Action: report exact manual remediation steps
+- Worktree/branch isolation check fails:
+  - Signal: target write path is outside current worktree root or current branch mismatches assigned task branch
+  - Action: stop immediately, emit `blocked`, and request corrected branch/worktree assignment
 
 ## Definition of Done
 - Test scenarios in scope are executed or clearly marked blocked.

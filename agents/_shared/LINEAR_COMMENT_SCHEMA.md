@@ -12,6 +12,10 @@ Use this schema for all orchestrator/worker comments in Linear to keep comments 
 - Orchestrator task packet comments:
   - `event: task_packet`
   - `packet_type`: `DEV_TASK` | `TEST_TASK` | `REVIEW_TASK`
+  - must include assignment context fields:
+    - `worker_slot`
+    - `worktree_root`
+    - `branch`
 - Worker runtime comments:
   - `event`: `start` | `heartbeat` | `handoff` | `done` | `blocked` | `failed` | `not_ready`
 

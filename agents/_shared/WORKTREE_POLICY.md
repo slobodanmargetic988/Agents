@@ -1,5 +1,5 @@
 # Shared Worktree Policy
-Last Updated: 2026-02-21 01:40 CET
+Last Updated: 2026-02-21 01:58 CET
 
 Use this file as the default policy for worktree handling across agents.
 
@@ -16,6 +16,23 @@ Use this file as the default policy for worktree handling across agents.
 - Inside each slot worktree, each task must use its own feature branch:
   - branch format: `codex/<slot>/<issue-or-task-id>`
 - Never run two different active tasks on the same branch.
+
+## Hard Report Write Gate (Tester/Reviewer)
+- Tester and reviewer roles must write report/state/event files only inside the currently checked-out git worktree root.
+- Forbidden:
+  - writing to an absolute base-repo path that is outside current `git rev-parse --show-toplevel`
+  - writing to shared sprint files for task-specific output
+  - writing task output outside `/reports/issues/<task_identifier>/`
+- Required preflight before any write:
+  1. `WORKTREE_ROOT="$(git rev-parse --show-toplevel)"`
+  2. `CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"`
+  3. verify branch matches task context (`branch_name` input or contains task identifier)
+  4. set `ISSUE_DIR="$WORKTREE_ROOT/reports/issues/<task_identifier>"`
+  5. create/write only files under `ISSUE_DIR`
+- If any preflight check fails:
+  - stop immediately
+  - emit blocked/not-ready event
+  - do not write any report file
 
 ## Safe Auto-Commit Rule
 Agent may auto-commit blocked local changes only when all conditions are true:

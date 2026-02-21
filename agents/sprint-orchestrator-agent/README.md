@@ -1,5 +1,5 @@
 # Sprint Orchestrator Agent
-Last Updated: 2026-02-21 01:40 CET
+Last Updated: 2026-02-21 01:58 CET
 
 ## Mission
 Run sprint orchestration end-to-end: publish deterministic role packets, start background worker sessions, keep dependency-safe queues moving, and report control-state in the visible orchestrator chat every 5 minutes.
@@ -93,6 +93,8 @@ Run sprint orchestration end-to-end: publish deterministic role packets, start b
 1. Normalize tasks and dependencies.
 2. Resolve tracking mode/config paths.
 3. Publish/update role packets for currently actionable tasks.
+   - include explicit `branch`, `worker_slot`, and `worktree_root` for every packet
+   - for tester/reviewer packets, include the exact branch they must verify (no fallback branch guessing)
 4. Compute ready developer task count and apply adaptive worker-count rule.
 5. Ensure worker-slot worktrees exist and are pinned per slot.
 6. Launch missing developer sessions via thread-dispatch skill.

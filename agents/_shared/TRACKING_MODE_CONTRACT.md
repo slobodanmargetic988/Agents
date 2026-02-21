@@ -28,6 +28,8 @@ Use this contract to keep agent coordination deterministic with and without Line
   - `task_identifier`
   - `tracking_mode`
   - `role`
+  - `worker_slot`
+  - `worktree_root`
   - `branch`
   - acceptance criteria / test scope
   - `packet_version`
