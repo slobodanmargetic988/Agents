@@ -9,10 +9,12 @@ This folder stores portable skill definitions used by agents in this repository.
 - `pdf`
 - `playwright`
 - `screenshot`
+- `sleep`
 - `speech`
 - `spreadsheet`
 - `skill-creator`
 - `skill-installer`
+- `thread-dispatch`
 
 ## Install To Codex Runtime
 For a missing skill `<skill-name>`, copy its folder into `$CODEX_HOME/skills/` (usually `~/.codex/skills/`):
