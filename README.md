@@ -9,6 +9,10 @@ Instead, this repo stores:
 - Reusable instructions and templates
 - Tutorials for creating and using agents effectively
 
+## Support This Project
+
+Sponsor on GitHub: [github.com/sponsors/slobodanmargetic988](https://github.com/sponsors/slobodanmargetic988)
+
 ## Project Goals
 
 - Keep agent work structured and easy to browse
