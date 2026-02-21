@@ -114,3 +114,7 @@ Use **Agent Making Agent** to create a standard template, then build your second
 
 - Made by Slobodan Margetic
 - Contact: slobodanmargetic988@gmail.com
+
+## Sponsors
+
+<!-- sponsors --><!-- sponsors -->

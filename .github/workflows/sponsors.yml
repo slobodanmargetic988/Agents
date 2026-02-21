@@ -1,0 +1,27 @@
+name: Update Sponsors in README
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  sponsors:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate sponsors block
+        uses: JamesIves/github-sponsors-readme-action@v1.6.0
+        with:
+          token: ${{ secrets.UPDATESPONSORS }}
+          file: README.md
+
+      - name: Commit README changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update sponsors list in README"
+          file_pattern: README.md
