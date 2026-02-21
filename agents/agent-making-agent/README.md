@@ -1,6 +1,6 @@
 # Agent Making Agent
 
-Last Updated: 2026-02-15 19:18 CET
+Last Updated: 2026-02-21 13:05 CET
 
 ## Mission
 Define and enforce a minimum quality standard for every new agent in this repository.
@@ -22,6 +22,7 @@ Define and enforce a minimum quality standard for every new agent in this reposi
   - Candidate `README.md` content
   - Candidate `USAGE_TEMPLATE.md` content
   - Candidate `EXAMPLES.md` content
+  - Candidate `USER_GUIDE.html` content
 - Optional:
   - Relevant project constraints
   - Preferred output format for scoring feedback
@@ -49,7 +50,7 @@ Define and enforce a minimum quality standard for every new agent in this reposi
   - Agent acceptance result (`PASS` or `FAIL`)
   - Rubric table with criterion-by-criterion scores
   - Total score and improvement actions
-  - Required deliverables check for three-file agent package
+  - Required deliverables check for four-file agent package
 - Location:
   - Presented directly to the user in response output
   - Stored in agent README sections where applicable
@@ -57,7 +58,7 @@ Define and enforce a minimum quality standard for every new agent in this reposi
   - Candidate agent includes all required files and passes hard gates and quality threshold
 
 ## Workflow
-1. Verify the candidate agent package includes `README.md`, `USAGE_TEMPLATE.md`, and `EXAMPLES.md`.
+1. Verify the candidate agent package includes `README.md`, `USAGE_TEMPLATE.md`, `EXAMPLES.md`, and `USER_GUIDE.html`.
 2. Verify README includes all required sections.
 3. Validate hard gates (timestamp near top and rubric transparency requirements).
 4. Validate README `Skills` section exists with all mandatory subsections.
@@ -65,9 +66,10 @@ Define and enforce a minimum quality standard for every new agent in this reposi
 6. Validate `USAGE_TEMPLATE.md` has both `Blank Template` and `Filled Example`.
 7. Validate `EXAMPLES.md` includes at least two diverse input/output examples.
 8. Validate `EXAMPLES.md` includes explicit guidance telling users to adapt examples to their own needs.
-9. Score agent with the quality rubric (0-2 per criterion).
-10. Output full scoring breakdown to user, including total and weak areas.
-11. If failing, provide targeted revision actions and re-run scoring after edits.
+9. Validate `USER_GUIDE.html` exists and provides a clear, visually polished usage overview.
+10. Score agent with the quality rubric (0-2 per criterion).
+11. Output full scoring breakdown to user, including total and weak areas.
+12. If failing, provide targeted revision actions and re-run scoring after edits.
 
 ## Constraints
 - Canonical standards source for agent creation/review is this file: `/agents/agent-making-agent/README.md`.
@@ -87,6 +89,22 @@ Define and enforce a minimum quality standard for every new agent in this reposi
   - Must include at least two diverse examples (different scenarios, not minor wording changes).
   - Each example must show both input and expected output.
   - Must include an explicit note instructing users to review and adapt examples for their own context.
+- `USER_GUIDE.html` rules:
+  - Must be included for every agent package and named exactly `USER_GUIDE.html`.
+  - Must be a standalone HTML5 page with embedded CSS (no build step required).
+  - Preferred starter template: `/agents/agent-making-agent/USER_GUIDE_TEMPLATE.html`.
+  - Must provide a practical overview for new users:
+    - what the agent does
+    - when to use it
+    - required inputs
+    - execution flow
+    - quick-start usage snippet
+  - Must be visually polished and readable, comparable in quality to Optimus guides in:
+    - `/agents/optimus-prime/USER_GUIDE.html`
+    - `/agents/optimus-fullstack-developer/USER_GUIDE.html`
+    - `/agents/optimus-reviewer/USER_GUIDE.html`
+  - Must be responsive on desktop/mobile and include `<meta name="viewport" ...>`.
+  - Must avoid external asset dependencies that can break portability.
 - README `Skills` section rules:
   - Must include `Required Skills`, `Potentially Required Skills`, `If Missing, Install From`, `Fallback Behavior If Skill Is Unavailable`, and `Restart Note`.
   - `If Missing, Install From` must reference repo-local skill paths (for example `/skills/<skill-name>/SKILL.md`) and runtime paths under `$CODEX_HOME/skills/`.
@@ -101,6 +119,7 @@ Define and enforce a minimum quality standard for every new agent in this reposi
   - `README.md`
   - `USAGE_TEMPLATE.md`
   - `EXAMPLES.md`
+  - `USER_GUIDE.html`
 - Required README sections exist:
   - Mission
   - In Scope
@@ -122,6 +141,8 @@ Define and enforce a minimum quality standard for every new agent in this reposi
   - [ ] Blank template is relevant, append-only, and path-portable
   - [ ] `EXAMPLES.md` exists with at least two diverse input/output examples
   - [ ] `EXAMPLES.md` contains user guidance to adapt examples to their needs
+  - [ ] `USER_GUIDE.html` exists and provides a clear onboarding overview
+  - [ ] `USER_GUIDE.html` is visually polished, responsive, and portable
   - [ ] `Skills` section contains required/potential/install/fallback/restart subsections
   - [ ] `Skills` section includes a Codex restart note after skill installation
   - [ ] MCP-dependent agents include `MCP` section with setup, fallback, and restart note
@@ -130,7 +151,7 @@ Define and enforce a minimum quality standard for every new agent in this reposi
 
 ## Failure Handling
 - Missing required files:
-  - Signal: Agent folder does not contain all required files (`README.md`, `USAGE_TEMPLATE.md`, `EXAMPLES.md`)
+  - Signal: Agent folder does not contain all required files (`README.md`, `USAGE_TEMPLATE.md`, `EXAMPLES.md`, `USER_GUIDE.html`)
   - Action: Return `FAIL` and list missing files
 - Missing required sections:
   - Signal: One or more mandatory sections absent
@@ -147,6 +168,9 @@ Define and enforce a minimum quality standard for every new agent in this reposi
 - Missing or weak examples:
   - Signal: No `EXAMPLES.md`, fewer than two examples, low-diversity examples, or no user adaptation guidance
   - Action: Return `FAIL` and require diverse examples plus adaptation note
+- Missing or weak user guide:
+  - Signal: No `USER_GUIDE.html`, weak onboarding coverage, non-responsive layout, or low readability
+  - Action: Return `FAIL` and require a polished responsive guide aligned with Optimus quality baseline
 - Invalid blank template design:
   - Signal: Template includes irrelevant fields, replacement placeholders, or absolute local paths
   - Action: Return `FAIL` and require rewrite to append-only portable format
@@ -162,6 +186,7 @@ Define and enforce a minimum quality standard for every new agent in this reposi
 - Candidate agent scores at least `14/16`
 - Full rubric output is shown to the user
 - Candidate agent includes concrete next-step improvements if score is below perfect
+- Candidate agent ships all four required files, including `USER_GUIDE.html`
 
 ## Quality Rubric (0-2 per criterion, Total 16)
 - Purpose clarity
@@ -176,7 +201,7 @@ Define and enforce a minimum quality standard for every new agent in this reposi
 ## Hard Gates (Mandatory)
 An agent fails regardless of score if any item below is false:
 
-- [ ] `README.md`, `USAGE_TEMPLATE.md`, and `EXAMPLES.md` all exist
+- [ ] `README.md`, `USAGE_TEMPLATE.md`, `EXAMPLES.md`, and `USER_GUIDE.html` all exist
 - [ ] `Last Updated` timestamp exists near the top of the README
 - [ ] Rubric is scored
 - [ ] Rubric output is explicitly shown to the user
@@ -185,6 +210,10 @@ An agent fails regardless of score if any item below is false:
 - [ ] Blank template is append-only (no deletion/replacement required)
 - [ ] `EXAMPLES.md` has at least two diverse input/output examples
 - [ ] `EXAMPLES.md` includes guidance for users to adapt examples to their needs
+- [ ] `USER_GUIDE.html` exists and is named exactly `USER_GUIDE.html`
+- [ ] `USER_GUIDE.html` includes what/when/inputs/flow/quick-start sections
+- [ ] `USER_GUIDE.html` is visually polished and mobile responsive
+- [ ] `USER_GUIDE.html` avoids brittle external asset dependencies
 - [ ] README contains `Skills` section with required/potential/install/fallback/restart subsections
 - [ ] Skills install guidance includes repo `/skills/` and runtime `$CODEX_HOME/skills/` paths
 - [ ] Skills section includes explicit Codex restart note after skill install
@@ -222,7 +251,7 @@ Top Improvements
 ```
 
 ## Agent Acceptance Checklist
-- [ ] Agent folder contains `README.md`, `USAGE_TEMPLATE.md`, and `EXAMPLES.md`
+- [ ] Agent folder contains `README.md`, `USAGE_TEMPLATE.md`, `EXAMPLES.md`, and `USER_GUIDE.html`
 - [ ] Purpose is clear and narrow
 - [ ] Inputs and outputs are documented
 - [ ] Safety boundaries are explicit
@@ -239,6 +268,9 @@ Top Improvements
 - [ ] `EXAMPLES.md` has at least two diverse examples
 - [ ] Examples include both input and expected output
 - [ ] Examples include an adaptation note for users
+- [ ] `USER_GUIDE.html` provides a clear onboarding overview
+- [ ] `USER_GUIDE.html` includes quick-start usage and workflow summary
+- [ ] `USER_GUIDE.html` is visually polished and responsive
 - [ ] README contains complete `Skills` section
 - [ ] Skills section includes fallback behavior if skills are unavailable
 - [ ] Skills section tells user to restart Codex after installing skills
@@ -313,6 +345,12 @@ Also create `agents/<new-agent>/EXAMPLES.md` with:
 - At least two diverse scenarios
 - For each scenario: input and expected output
 - A note to users: review and adapt examples to their own project context and goals
+
+Also create `agents/<new-agent>/USER_GUIDE.html` with:
+- a polished hero/header and concise mission summary
+- sections for when to use, required inputs, execution flow, and quick-start prompt
+- responsive card/grid layout that remains readable on mobile
+- standalone HTML/CSS (no external build/runtime dependency)
 
 Examples for this agent live in `EXAMPLES.md` in this folder.
 

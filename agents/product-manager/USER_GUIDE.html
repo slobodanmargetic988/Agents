@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>product manager Guide</title>
+  <style>
+    :root {
+      --bg-1: #081827;
+      --bg-2: #14324a;
+      --bg-3: #f6f4ea;
+      --ink-dark: #0f2739;
+      --ink-light: #e9f3ff;
+      --accent-a: #ff7a3d;
+      --accent-b: #1cb6b1;
+      --accent-c: #ffd166;
+      --card: rgba(255, 255, 255, 0.92);
+      --border: rgba(10, 34, 53, 0.15);
+      --radius: 18px;
+      --shadow: 0 16px 44px rgba(2, 14, 22, 0.22);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Space Grotesk", "Manrope", "Avenir Next", sans-serif;
+      color: var(--ink-dark);
+      background:
+        radial-gradient(1200px 500px at 88% -12%, rgba(28, 182, 177, 0.27), transparent 70%),
+        radial-gradient(920px 430px at -12% 8%, rgba(255, 122, 61, 0.23), transparent 70%),
+        linear-gradient(160deg, var(--bg-3), #f9f9f4 55%, #eef8fb);
+      line-height: 1.55;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 3.5rem 1.2rem 2.6rem;
+      color: var(--ink-light);
+      background: linear-gradient(120deg, var(--bg-1), var(--bg-2));
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -18% -35% auto;
+      width: 430px;
+      height: 430px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 209, 102, 0.32), rgba(255, 209, 102, 0));
+      animation: drift 8s ease-in-out infinite;
+    }
+
+    @keyframes drift {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+    }
+
+    .container {
+      max-width: 1040px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 5vw, 3rem);
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .subtitle {
+      margin: 0.7rem 0 0;
+      max-width: 760px;
+      color: rgba(233, 243, 255, 0.9);
+      font-size: 1.02rem;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+      margin-top: 1.2rem;
+    }
+
+    .badge {
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      border-radius: 999px;
+      padding: 0.32rem 0.76rem;
+      font-size: 0.82rem;
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    main {
+      padding: 1.4rem 1.2rem 3rem;
+    }
+
+    .grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.1rem;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(14px);
+      animation: rise 0.55s ease forwards;
+    }
+
+    .card:nth-child(2) { animation-delay: 0.08s; }
+    .card:nth-child(3) { animation-delay: 0.16s; }
+    .card:nth-child(4) { animation-delay: 0.24s; }
+    .card:nth-child(5) { animation-delay: 0.32s; }
+
+    @keyframes rise {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .span-12 { grid-column: span 12; }
+    .span-6 { grid-column: span 6; }
+
+    h2 {
+      margin: 0.1rem 0 0.7rem;
+      font-size: 1.06rem;
+      letter-spacing: 0.02em;
+      color: #0f2d45;
+    }
+
+    ul {
+      margin: 0.2rem 0 0.5rem 1.1rem;
+      padding: 0;
+    }
+
+    li { margin-bottom: 0.33rem; }
+
+    .flow {
+      background: linear-gradient(90deg, #fff5ee, #eefcfb);
+      border: 1px dashed rgba(13, 56, 86, 0.24);
+      border-radius: 14px;
+      padding: 0.84rem;
+      font-family: "IBM Plex Mono", "JetBrains Mono", monospace;
+      font-size: 0.88rem;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    pre {
+      margin: 0;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 0.82rem;
+      background: #f6fbff;
+      font-family: "IBM Plex Mono", "JetBrains Mono", monospace;
+      font-size: 0.86rem;
+      overflow-x: auto;
+    }
+
+    @media (max-width: 860px) {
+      .span-6 { grid-column: span 12; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="container">
+      <h1>product manager</h1>
+      <p class="subtitle">Assess project execution state against intended vision, then drive an interactive planning workflow with the user to close gaps, expand roadmap scope, and produce actionable tasks in Linear or local tracking mode.</p>
+      <div class="badge-row">
+        <span class="badge">Agent: product-manager</span>
+        <span class="badge">Guide: USER_GUIDE.html</span>
+        <span class="badge">Use with README + usage template</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="container grid">
+      <section class="card span-12">
+        <h2>What This Agent Does</h2>
+        <ul>
+<li>Run an initial quick-pass discovery of project sources (docs, trackers, and key code areas).</li>
+<li>Present discovered relevant sources to the user and ask for confirmation/additions before deep analysis.</li>
+<li>Adapt inspection depth based on uncertainty, evidence quality, and tracking maturity.</li>
+<li>Produce baseline execution-state scoring with three `0-100` estimates.</li>
+<li>Co-create implementation and roadmap plans through iterative user interaction.</li>
+<li>Convert approved plans into task backlogs in `tracking_mode=linear` or `tracking_mode=local`.</li>
+        </ul>
+      </section>
+
+      <section class="card span-6">
+        <h2>When To Use</h2>
+        <ul>
+          <li>Use when this agent's mission matches the current task in your project workflow.</li>
+          <li>Use when inputs can be provided clearly from repository context and tracker state.</li>
+          <li>Use this guide for quick orientation, then execute through the usage template.</li>
+        </ul>
+      </section>
+
+      <section class="card span-6">
+        <h2>Required Inputs</h2>
+        <ul>
+<li><code>`project_root`</code></li>
+<li><code>`high_level_goal`</code></li>
+<li><code>`tracking_mode` (`linear` or `local`)</code></li>
+        </ul>
+      </section>
+
+      <section class="card span-12">
+        <h2>Execution Flow</h2>
+        <div class="flow">Validate baseline inputs and resolve `tracking_mode`. -&gt; Run quick-pass reconnaissance of project sources (docs, tracker artifacts, high-signal code map). -&gt; Present discovered sources to user and ask: -&gt; Ask targeted clarification questions before making plan suggestions. -&gt; Decide inspection depth using evidence: -&gt; If deep scan is needed and codebase is large, propose starter tasks for delegated review/testing to reduce uncertainty.</div>
+      </section>
+
+      <section class="card span-12">
+        <h2>Quick Start Prompt</h2>
+        <pre>Agent: product-manager
+Goal:
+- Assess current project execution state against intended vision and co-create an actionable plan.
+Inputs: project_root:
+- 
+Inputs: high_level_goal:
+- 
+Inputs: tracking_mode:
+- local
+Inputs: goal_sources:
+- README.md
+- docs/
+- issues/
+Inputs: user_confidence_level:
+- medium
+Inputs: analysis_depth_hint:
+- adaptive
+Inputs: linear_issue_or_project:
+- 
+Inputs: local_plan_path:
+- reports/product-plan/
+Inputs: persist_plan_mode:
+- chat-only
+Inputs: planning_horizon:
+- adaptive
+Constraints:
+- Start with quick-pass source discovery.
+- Show discovered relevant sources and ask user to confirm or add missing sources.
+- Ask clarifying questions before suggesting draft plan.
+- Use minimal inspection when evidence quality is high and confidence is high.
+- Use deep inspection when uncertainty is high or tracking is weak.
+- Produce three baseline 0-100 estimates: features completion, effort completion, vision alignment.
+- Do not create final draft plan until user indicates readiness.
+Output:
+- Interactive discovery summary
+- Baseline three-score assessment with rationale
+- Gap analysis and prioritized next steps
+- Task backlog output in selected tracking mode</pre>
+      </section>
+    </div>
+  </main>
+</body>
+</html>
