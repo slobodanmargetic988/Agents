@@ -248,6 +248,18 @@
           <li>Role-based policy example: developers on <code>codex-second</code>, tester/reviewer on <code>codex</code>.</li>
           <li>Slot-based policy example: <code>dev-1/dev-2</code> on <code>codex-second</code>, <code>dev-3</code> on <code>codex-third</code>, <code>test-1/review-1</code> on <code>codex-fourth</code>.</li>
           <li>Optimus keeps profile assignment stable per worker thread and passes it via thread-dispatch <code>--codex-home</code>.</li>
+          <li>Optimus also uses thread-dispatch MCP flags to minimize worker MCP access: default <code>--disable-all-mcp</code>, then <code>--enable-only-mcp</code> only when a packet requires it.</li>
+        </ul>
+      </section>
+
+      <section class="card span-6">
+        <h2>Worker MCP Policy</h2>
+        <ul>
+          <li>Workers never get <code>linear</code> or <code>linear_sse</code> MCP access. Optimus owns all Linear updates.</li>
+          <li>Reviewer: default no MCPs; normally no Playwright or DevTools.</li>
+          <li>Developer: default no MCPs; allow <code>context7</code> only when docs lookup is explicitly needed.</li>
+          <li>Tester: default no MCPs; allow <code>playwright</code> and/or <code>chrome_devtools</code> only for browser/UI verification packets.</li>
+          <li>MCP enablement is packet-specific and should stay as small as possible.</li>
         </ul>
       </section>
 
@@ -276,7 +288,7 @@
 
       <section class="card span-12">
         <h2>Execution Flow</h2>
-        <div class="flow">RESOLVE START ANCHOR + CODEX PROFILE -> RUN RATE SNAPSHOT SKILL + HARD/SOFT RATE CHECKS -> PREPARE SLOT -> DISPATCH DEV -> SLEEP 5m -> DEV DONE (UPDATE LINEAGE) -> DISPATCH TEST -> TEST PASS -> DISPATCH REVIEW -> REVIEW PASS -> LINEAR SYNC -> NEXT UNIT</div>
+        <div class="flow">RESOLVE START ANCHOR + CODEX PROFILE + MCP ALLOWLIST -> RUN RATE SNAPSHOT SKILL + HARD/SOFT RATE CHECKS -> PREPARE SLOT -> DISPATCH DEV -> SLEEP 5m -> DEV DONE (UPDATE LINEAGE) -> DISPATCH TEST -> TEST PASS -> DISPATCH REVIEW -> REVIEW PASS -> LINEAR SYNC -> NEXT UNIT</div>
         <p class="footer-note">
           If a phase fails, Optimus routes the task back to the required phase (dev fix, retest, rereview) until fully accepted.
         </p>

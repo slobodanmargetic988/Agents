@@ -11,6 +11,12 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover
+    tomllib = None  # type: ignore[assignment]
 
 
 def parse_args() -> argparse.Namespace:
@@ -66,6 +72,25 @@ def parse_args() -> argparse.Namespace:
             "(same effect as prefixing the command with CODEX_HOME=...)"
         ),
     )
+    mcp_group = parser.add_mutually_exclusive_group()
+    mcp_group.add_argument(
+        "--disable-all-mcp",
+        action="store_true",
+        help=(
+            "Read <CODEX_HOME>/config.toml and disable all configured MCP "
+            "servers via generated -c overrides."
+        ),
+    )
+    mcp_group.add_argument(
+        "--enable-only-mcp",
+        action="append",
+        default=[],
+        metavar="MCP_NAME",
+        help=(
+            "Read <CODEX_HOME>/config.toml and disable all configured MCP "
+            "servers except the named MCP(s). Repeatable."
+        ),
+    )
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -88,12 +113,93 @@ def load_prompt(args: argparse.Namespace) -> str:
     return text
 
 
-def build_command(args: argparse.Namespace, prompt_text: str) -> list[str]:
+def effective_codex_home(args: argparse.Namespace) -> Path:
+    if args.codex_home:
+        return Path(args.codex_home).expanduser().resolve()
+    env_home = os.environ.get("CODEX_HOME")
+    if env_home:
+        return Path(env_home).expanduser().resolve()
+    return (Path.home() / ".codex").resolve()
+
+
+def read_codex_config(config_path: Path) -> dict[str, Any]:
+    if tomllib is None:
+        raise ValueError("python_tomllib_unavailable")
+    if not config_path.is_file():
+        raise ValueError(f"config_toml_not_found:{config_path}")
+    try:
+        with config_path.open("rb") as fh:
+            data = tomllib.load(fh)
+    except Exception as exc:  # noqa: BLE001
+        raise ValueError(f"config_toml_parse_error:{config_path}:{exc}") from exc
+    if not isinstance(data, dict):
+        raise ValueError(f"config_toml_invalid_root:{config_path}")
+    return data
+
+
+def configured_mcp_server_names(config_data: dict[str, Any]) -> list[str]:
+    servers = config_data.get("mcp_servers")
+    if not isinstance(servers, dict):
+        return []
+    names = [name for name, value in servers.items() if isinstance(name, str) and isinstance(value, dict)]
+    return sorted(names)
+
+
+def resolve_mcp_disable_overrides(args: argparse.Namespace) -> tuple[list[str], dict[str, Any]]:
+    requested_enabled = [value.strip() for value in args.enable_only_mcp if value and value.strip()]
+
+    if not args.disable_all_mcp and not requested_enabled:
+        return [], {"mcp_mode": "inherit"}
+
+    mode = "disable_all" if args.disable_all_mcp else "enable_only"
+    codex_home = effective_codex_home(args)
+    config_path = codex_home / "config.toml"
+    config_data = read_codex_config(config_path)
+    defined_servers = configured_mcp_server_names(config_data)
+    if not defined_servers:
+        raise ValueError(f"mcp_servers_not_defined_in_config:{config_path}")
+
+    requested_enabled_set = set(requested_enabled)
+    unknown_enabled = sorted(requested_enabled_set - set(defined_servers))
+    if unknown_enabled:
+        raise ValueError(
+            "unknown_mcp_server:"
+            + ",".join(unknown_enabled)
+            + f":defined={','.join(defined_servers)}"
+        )
+
+    if mode == "disable_all":
+        disabled_servers = defined_servers
+        enabled_servers: list[str] = []
+    else:
+        disabled_servers = [name for name in defined_servers if name not in requested_enabled_set]
+        enabled_servers = [name for name in defined_servers if name in requested_enabled_set]
+
+    overrides = [f"mcp_servers.{name}.enabled=false" for name in disabled_servers]
+    metadata = {
+        "mcp_mode": mode,
+        "mcp_config_path": str(config_path),
+        "mcp_servers_defined": defined_servers,
+        "mcp_servers_enabled": enabled_servers,
+        "mcp_servers_disabled": disabled_servers,
+        "mcp_disable_overrides": overrides,
+    }
+    return overrides, metadata
+
+
+def build_command(
+    args: argparse.Namespace,
+    prompt_text: str,
+    mcp_disable_overrides: list[str] | None = None,
+) -> list[str]:
     cmd = ["codex", "exec"]
     use_full_auto = args.full_auto and not args.no_full_auto
     if use_full_auto:
         cmd.append("--full-auto")
     cmd.extend(["--cd", str(Path(args.cwd).expanduser().resolve())])
+    if mcp_disable_overrides:
+        for override in mcp_disable_overrides:
+            cmd.extend(["-c", override])
     if args.extra_arg:
         cmd.extend(args.extra_arg)
     cmd.append(prompt_text)
@@ -120,7 +226,13 @@ def main() -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 
-    cmd = build_command(args, prompt_text)
+    try:
+        mcp_disable_overrides, mcp_meta = resolve_mcp_disable_overrides(args)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+
+    cmd = build_command(args, prompt_text, mcp_disable_overrides=mcp_disable_overrides)
     env = build_env(args)
     mode = "foreground" if args.foreground else "background"
     if args.foreground:
@@ -143,6 +255,7 @@ def main() -> int:
         "log_file": str(log_file),
         "codex_home": env.get("CODEX_HOME"),
     }
+    payload.update(mcp_meta)
     if payload["codex_home"]:
         payload["command_shell_with_env"] = (
             f"CODEX_HOME={shlex.quote(payload['codex_home'])} " + shlex.join(cmd)

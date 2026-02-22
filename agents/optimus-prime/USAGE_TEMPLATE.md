@@ -25,6 +25,8 @@ Inputs: packet_require_start_point: true
 Inputs: codex_profile_aliases: codex=default
 Inputs: worker_codex_profile_policy: role:developer=codex; role:tester=codex; role:reviewer=codex
 Inputs: dispatch_codex_profile_mode: thread-dispatch-codex-home
+Inputs: dispatch_worker_mcp_mode: thread-dispatch-disable-all-by-default
+Inputs: worker_mcp_policy: role:developer=none; role:tester=none|playwright,chrome_devtools(on-demand); role:reviewer=none; deny:all-workers=linear,linear_sse; allow:on-demand-developer=context7
 Inputs: rate_gate_5h_percent: 15
 Inputs: rate_gate_weekly_percent: 10
 Inputs: soft_rate_gate_5h_percent: 40
@@ -45,7 +47,7 @@ Inputs: reviewer_agent_path: agents/optimus-reviewer/README.md
 Inputs: worker_role_policy: developers up to 3, testers up to 2, reviewer up to 1
 Inputs: developer_scaling: ready 1-3 => 1 dev, ready 4-9 => 2 devs, ready >=10 => 3 devs
 Inputs: concurrency_policy: developers do not get next task before test+review pass; testers wait for reviewer outcome before next task
-Constraints: Optimus-only Linear updates. Workers do not use linear skill. Workers use minimum required skills only. Every worker packet must include start_from_branch and start_from_commit. Optimus must use codex-rate-snapshot skill periodically for all configured profiles, derive single-user vs multiple-users from profile identity (auth.json best effort), apply hard rate gates before dispatching new work, and apply soft concurrency throttle caps when soft-gated. Run in 5-minute cycles and skip sleep only while handling user steering.
+Constraints: Optimus-only Linear updates. Workers do not use linear skill. Workers use minimum required skills only. Worker MCP access must be default-deny via thread-dispatch --disable-all-mcp and expanded only with --enable-only-mcp when packet requirements justify it; never grant workers linear or linear_sse MCP. Every worker packet must include start_from_branch and start_from_commit. Optimus must use codex-rate-snapshot skill periodically for all configured profiles, derive single-user vs multiple-users from profile identity (auth.json best effort), apply hard rate gates before dispatching new work, and apply soft concurrency throttle caps when soft-gated. Run in 5-minute cycles and skip sleep only while handling user steering.
 Output: reports/optimus-prime runtime logs + worker prompt packets + synchronized Linear statuses/comments
 ```
 
@@ -74,6 +76,8 @@ Inputs: packet_require_start_point: true
 Inputs: codex_profile_aliases: codex=default, codex-second=$HOME/.codex-second, codex-third=$HOME/.codex-third, codex-fourth=$HOME/.codex-fourth
 Inputs: worker_codex_profile_policy: role:developer=codex-second; role:tester=codex; role:reviewer=codex
 Inputs: dispatch_codex_profile_mode: thread-dispatch-codex-home
+Inputs: dispatch_worker_mcp_mode: thread-dispatch-disable-all-by-default
+Inputs: worker_mcp_policy: role:developer=none; role:tester=none|playwright,chrome_devtools(on-demand); role:reviewer=none; deny:all-workers=linear,linear_sse; allow:on-demand-developer=context7
 Inputs: rate_gate_5h_percent: 15
 Inputs: rate_gate_weekly_percent: 10
 Inputs: soft_rate_gate_5h_percent: 40
@@ -94,6 +98,6 @@ Inputs: reviewer_agent_path: agents/optimus-reviewer/README.md
 Inputs: worker_role_policy: developers up to 3, testers up to 2, reviewer up to 1
 Inputs: developer_scaling: ready 1-3 => 1 dev, ready 4-9 => 2 devs, ready >=10 => 3 devs
 Inputs: concurrency_policy: developers do not get next task before test+review pass; testers wait for reviewer outcome before next task
-Constraints: Use workstation-preparation before every new worker thread. Keep medium-thinking and high-thinking worker threads stable and reused. Build packet start anchors from branch lineage map so dependent unmerged tasks always get explicit starting point. Use codex-rate-snapshot skill on configured profiles every cycle, stop new dispatch when hard rate gates are hit (or sleep until reset if under 4h), and reduce active background workers to soft throttle cap when soft-gated. If branch checkout is denied, workers create role-suffixed branch and continue.
+Constraints: Use workstation-preparation before every new worker thread. Keep medium-thinking and high-thinking worker threads stable and reused. Build packet start anchors from branch lineage map so dependent unmerged tasks always get explicit starting point. Launch worker threads with thread-dispatch MCP minimization (default disable-all; enable only task-required MCPs, never linear/linear_sse for workers). Use codex-rate-snapshot skill on configured profiles every cycle, stop new dispatch when hard rate gates are hit (or sleep until reset if under 4h), and reduce active background workers to soft throttle cap when soft-gated. If branch checkout is denied, workers create role-suffixed branch and continue.
 Output: Cycle-by-cycle orchestration until 20 tasks are fully done, with Optimus-managed Linear synchronization and complete local trace logs.
 ```

@@ -10,6 +10,7 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Initialize workstation slots with `workstation-preparation` skill before worker launch.
 - Maintain worker registry with fixed role + fixed thinking profile per thread (`medium` or `high`) and reuse threads in that mode.
 - Maintain fixed Codex profile assignment per worker thread (for example `codex`, `codex-second`, `codex-third`) unless user explicitly changes it.
+- Dispatch worker threads with minimum required MCP servers enabled (default deny; enable only what the unit needs).
 - Monitor rate limits for the primary profile and configured worker profiles by reading Codex session JSONL `token_count` events.
 - Detect profile-running mode (`single-user` vs `multiple-users`) from profile identity (preferred source: each profile `auth.json`; fallback: cached/session metadata if available).
 - Apply rate-gate behavior before dispatching new work:
@@ -79,6 +80,14 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
       - `role:developer=codex-second; role:tester=codex; role:reviewer=codex`
       - `slot:dev-1=codex-second; slot:dev-2=codex-second; slot:dev-3=codex-third; slot:test-1=codex-fourth; slot:review-1=codex-fourth`
   - `dispatch_codex_profile_mode` (default: `thread-dispatch-codex-home`)
+  - `dispatch_worker_mcp_mode` (default: `thread-dispatch-disable-all-by-default`)
+  - `worker_mcp_policy` (default: role-based minimal MCP policy)
+    - recommended compact syntax:
+      - `role:developer=none`
+      - `role:tester=none|playwright,chrome_devtools` (enable browser MCPs only when packet requires browser verification)
+      - `role:reviewer=none`
+      - `deny:all-workers=linear,linear_sse`
+      - `allow:on-demand-developer=context7`
   - `rate_gate_5h_percent` (default: `15`)
   - `rate_gate_weekly_percent` (default: `10`)
   - `soft_rate_gate_5h_percent` (default: `40`)
@@ -106,6 +115,7 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Canonical state also includes profile rate-status registry for dispatch gating decisions.
 - Worker agents must not use the `linear` skill.
 - Worker agents should only use skills strictly required for their assigned unit of work.
+- Worker MCP access should be minimized at dispatch time using thread-dispatch MCP overrides (`--disable-all-mcp` / `--enable-only-mcp`).
 - Worker output contract is short summary only:
   - what was done
   - branch used
@@ -116,6 +126,7 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
   - handoff recommendation
 - Optimus Prime is the only agent allowed to update Linear statuses/comments.
 - Optimus Prime also owns worker Codex profile selection and dispatches workers with the configured profile using thread-dispatch (`--codex-home` or `CODEX_HOME=...`).
+- Optimus Prime also owns worker MCP enablement and should dispatch workers with only task-required MCPs enabled via thread-dispatch (`--disable-all-mcp` / `--enable-only-mcp`).
 - Optimus Prime owns rate-status checks for the primary and worker profiles and must gate dispatch based on configured thresholds.
 - Rate-source collection must use `codex-rate-snapshot` skill (which reads session JSONL `token_count` events, not the interactive `/status` TUI).
 - Rate parsing must capture, at minimum, from latest relevant `token_count` event per profile:
@@ -169,6 +180,10 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Potentially Required Skills:
   - `playwright` (when orchestrator explicitly requests browser verification evidence)
 - Thread-dispatch profile routing support:
+  - Optimus should use thread-dispatch MCP minimization for background workers:
+    - default worker launch: `--disable-all-mcp`
+    - selective worker MCP access: `--enable-only-mcp <name>` (repeatable)
+    - workers must not receive `linear` / `linear_sse` MCP access (Optimus-only)
   - Optimus may pass worker profile via `--codex-home <path>` (preferred) or shell `CODEX_HOME=...` prefix.
   - `codex` alias means default profile (no override).
 - If Missing, Install From:
@@ -211,7 +226,7 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 
 ## Outputs
 - `reports/optimus-prime/WORKER_REGISTRY.json`
-  - worker slot map, thinking profile, role, Codex profile alias/home, session state (`running|idle|stopped|blocked`)
+  - worker slot map, thinking profile, role, Codex profile alias/home, MCP dispatch mode/allowlist, session state (`running|idle|stopped|blocked`)
 - `reports/optimus-prime/CYCLE_LOG.jsonl`
   - cycle summaries, dispatch decisions, sleep/skip-sleep actions
 - `reports/optimus-prime/HANDOFF_LOG.jsonl`
@@ -248,6 +263,16 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
      - role default (`role:developer=...`)
      - fallback `codex`
    - persist selected profile alias/home in worker registry and keep it stable for thread reuse
+5a. Resolve worker MCP dispatch policy for each packet/worker:
+   - start from role-based minimal policy (`worker_mcp_policy`)
+   - default launch worker with thread-dispatch `--disable-all-mcp`
+   - if packet explicitly requires MCP(s), switch to `--enable-only-mcp` and list only required MCP names
+   - role guidance:
+     - developer: default none; allow `context7` only when task explicitly requires docs lookup
+     - tester: default none; allow `playwright` and/or `chrome_devtools` only for browser/UI verification tasks
+     - reviewer: default none; do not enable browser MCPs unless user explicitly requests specialized review requiring them
+   - never enable `linear` or `linear_sse` for worker threads (Optimus-only tracking updates)
+   - persist effective MCP mode + allowlist in worker registry for traceability
 6. Collect rate snapshots for primary profile and configured worker profiles (per `status_profiles_scope`):
    - run on startup when `status_check_on_start=true`
    - then every `status_check_interval_cycles`
@@ -287,6 +312,9 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
    - worker Codex profile:
      - use slot/role profile assignment from policy
      - dispatch via thread-dispatch `--codex-home` when alias resolves to non-default home
+   - worker MCP enablement:
+     - use thread-dispatch `--disable-all-mcp` by default
+     - use thread-dispatch `--enable-only-mcp` when packet requires specific MCPs
 10. Record all initialized threads in `WORKER_REGISTRY.json` and mark run-state.
 11. Dispatch first developer unit packet and start cycle loop.
 12. At each cycle:
@@ -304,6 +332,7 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
    - idle workers
    - task state per worker
    - worker Codex profile per slot (`codex`, `codex-second`, etc.)
+   - worker MCP mode per slot (`disable-all` or `enable-only:<list>`)
    - rate-gate state per checked profile (`eligible`, `gated`, `waiting-reset`, `wind-down`)
    - soft-throttle state per checked profile (`soft_concurrency_gated=true|false`) and effective running-worker caps
    - derived `profile_running_mode` (`single-user` or `multiple-users`)
@@ -328,6 +357,11 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Default dispatch target must be Optimus worker set (`optimus-fullstack-developer`, `optimus-fullstack-tester`, `optimus-reviewer`) unless user overrides it.
 - Worker Codex profile assignment must be deterministic and persisted per worker thread.
 - Do not silently move a running/reused worker thread to a different Codex profile unless user explicitly updates the profile policy.
+- Worker MCP enablement must be minimized by default (`--disable-all-mcp`) and only expanded when the assigned packet explicitly requires MCP access.
+- Do not grant `linear` or `linear_sse` MCP access to workers; Optimus is the only actor that updates Linear.
+- Developer workers should not receive browser MCPs (`playwright`, `chrome_devtools`) unless user explicitly overrides for a special task.
+- Reviewer workers should not receive browser MCPs (`playwright`, `chrome_devtools`) unless user explicitly requests a browser-based review.
+- Tester workers may receive browser MCPs only when the test packet requires browser/UI verification.
 - Always treat primary/default `codex` profile as Optimus's own profile for rate checks.
 - Do not rely on interactive `/status` TUI scraping for automated rate gating.
 - Do not dispatch new work to a worker whose assigned profile is rate-gated.
@@ -345,6 +379,7 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Worker registry always respects role and concurrency caps.
 - Every running worker has one active packet and one assigned workstation.
 - Every initialized worker has resolved `codex_profile_alias` and `codex_home` (or explicit default profile marker).
+- Every initialized/running worker has recorded MCP dispatch mode (`disable-all` or `enable-only`) and allowlist (if any).
 - Profile rate registry includes parsed profile identity and 5h/weekly limit status for every checked profile alias.
 - Profile rate registry includes `soft_concurrency_gated` state for every checked profile alias.
 - Derived `profile_running_mode` is recorded (`single-user` or `multiple-users`).
@@ -378,6 +413,9 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Invalid worker Codex profile assignment:
   - Signal: policy references unknown alias or alias path is unreadable
   - Action: stop worker dispatch for affected slot, report invalid alias/path, request corrected `codex_profile_aliases` or policy
+- Invalid worker MCP dispatch policy:
+  - Signal: requested MCP allowlist includes undefined MCP name for target profile config
+  - Action: stop dispatch for affected worker packet, log policy error, fallback to `--disable-all-mcp` only if packet does not require MCPs; otherwise request correction
 - Session rate snapshot unavailable or unparsable on primary profile:
   - Signal: primary `codex` profile latest session JSONL/token_count event missing or missing required fields
   - Action: enter conservative wind-down (no new dispatch) and retry rate snapshot before deciding to stop

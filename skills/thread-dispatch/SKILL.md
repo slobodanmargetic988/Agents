@@ -33,6 +33,8 @@ It is best for long-running tasks or parallel work where the current thread shou
   - `prompt` or `prompt_file`
 - Optional:
   - `codex_home` (custom `CODEX_HOME` path for spawned Codex process, e.g. `~/.codex-second`, `~/.codex-third`)
+  - `disable_all_mcp` (disable all MCP servers defined in target profile `config.toml`)
+  - `enable_only_mcp` (repeatable; disable all configured MCP servers except the listed names)
   - `foreground` / `background`
   - `full_auto` override
   - `log_dir`
@@ -102,6 +104,31 @@ python3 "$DISPATCH_SCRIPT" \
   --codex-home "$HOME/.codex-<profile-name>"
 ```
 
+### 6) Disable all MCP servers for spawned run (reads target profile `config.toml`)
+
+```bash
+python3 "$DISPATCH_SCRIPT" \
+  --cwd /Users/slobodan/Projects/Oroboros \
+  --prompt "Your prompt here" \
+  --background \
+  --codex-home "$HOME/.codex-second" \
+  --disable-all-mcp
+```
+
+Equivalent spawned Codex command will include generated `-c 'mcp_servers.<name>.enabled=false'` overrides for every MCP defined in the selected profile.
+
+### 7) Enable only specific MCP servers (disable all others)
+
+```bash
+python3 "$DISPATCH_SCRIPT" \
+  --cwd /Users/slobodan/Projects/Oroboros \
+  --prompt "Use Linear only for this task." \
+  --background \
+  --codex-home "$HOME/.codex-second" \
+  --enable-only-mcp linear \
+  --enable-only-mcp linear_sse
+```
+
 ## Behavior Notes
 
 - Default mode is detached/background.
@@ -110,7 +137,12 @@ python3 "$DISPATCH_SCRIPT" \
 - Use `--dry-run` to print the exact command without starting it.
 - The script inherits environment variables from the current shell, so `CODEX_HOME=...` prefixes are passed to the spawned `codex exec`.
 - `--codex-home` is available when you want the skill command itself to set the spawned Codex profile explicitly.
+- `--disable-all-mcp` and `--enable-only-mcp` read the target profile's `config.toml` (under the effective `CODEX_HOME`) to discover configured MCP names, then generate `-c mcp_servers.<name>.enabled=false` overrides.
+- The MCP modes are mutually exclusive.
+- If `--enable-only-mcp` names an MCP not defined in the target profile `config.toml`, the command fails with a validation error.
+- Use `--dry-run` to inspect generated `mcp_disable_overrides` before launching.
 - When using this skill from another agent, pass `codex_home` as an explicit input/parameter when you want a non-default Codex profile.
+- When using this skill from another agent, pass MCP mode explicitly when you want low-overhead worker runs (for example disable all MCPs for simple coding/review tasks).
 
 ## Visible Desktop Thread Mode (macOS)
 

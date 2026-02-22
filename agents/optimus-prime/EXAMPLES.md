@@ -183,6 +183,8 @@ Inputs: repo_root: ../Ouroboros
 Inputs: tracking_mode: automated-handoff
 Inputs: codex_profile_aliases: codex=default
 Inputs: worker_codex_profile_policy: role:developer=codex; role:tester=codex; role:reviewer=codex
+Inputs: dispatch_worker_mcp_mode: thread-dispatch-disable-all-by-default
+Inputs: worker_mcp_policy: role:developer=none; role:tester=none|playwright,chrome_devtools(on-demand); role:reviewer=none; deny:all-workers=linear,linear_sse; allow:on-demand-developer=context7
 Inputs: rate_gate_5h_percent: 15
 Inputs: rate_gate_weekly_percent: 10
 Inputs: soft_rate_gate_5h_percent: 40
@@ -218,6 +220,8 @@ Inputs: tracking_mode: automated-handoff
 Inputs: codex_profile_aliases: codex=default, codex-second=$HOME/.codex-second, codex-third=$HOME/.codex-third
 Inputs: worker_codex_profile_policy: slot:dev-1=codex-second; slot:dev-2=codex-third; slot:test-1=codex-third; slot:review-1=codex
 Inputs: dispatch_codex_profile_mode: thread-dispatch-codex-home
+Inputs: dispatch_worker_mcp_mode: thread-dispatch-disable-all-by-default
+Inputs: worker_mcp_policy: role:developer=none; role:tester=none|playwright,chrome_devtools(on-demand); role:reviewer=none; deny:all-workers=linear,linear_sse; allow:on-demand-developer=context7
 Inputs: rate_gate_5h_percent: 15
 Inputs: rate_gate_weekly_percent: 10
 Inputs: soft_rate_gate_5h_percent: 40
@@ -237,5 +241,6 @@ Optimus runs codex-rate-snapshot for codex, codex-second, and codex-third and pa
 If account identities differ, Optimus records profile-running-mode as multiple-users.
 When primary codex profile falls below rate gate, Optimus can still dispatch work to workers on codex-second/codex-third if they remain above gate.
 If a profile is not hard-gated but is soft-gated, Optimus throttles active workers on that profile to the soft cap instead of stopping it entirely.
+Worker dispatches still use MCP minimization: reviewers/devs run with all MCPs disabled by default, testers get browser MCPs only when a test packet explicitly needs browser verification, and workers never get linear/linear_sse MCP access.
 Optimus stops assigning work to any profile once that profile reaches gate and applies wait-or-wind-down when no eligible profiles remain.
 ```
