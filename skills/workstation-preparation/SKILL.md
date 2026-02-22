@@ -11,6 +11,11 @@ metadata:
 
 Use this skill to create or reset a worker slot worktree in a clean state.
 
+Mandatory policy gate:
+- Do not create or reset any worktree slot without explicit user permission.
+- If permission is not already explicit in the current request, stop and ask first.
+- This requirement follows `agents/_shared/WORKTREE_POLICY.md`.
+
 The skill enforces:
 - allowed slot names: `workstation-1` ... `workstation-10`
 - hard limit: never create an 11th workstation slot

@@ -19,8 +19,12 @@ It is best for long-running tasks or parallel work where the current thread shou
 
 ## Script
 
-`/Users/slobodan/.codex/skills/thread-dispatch/scripts/dispatch_codex_run.py`
-`/Users/slobodan/.codex/skills/thread-dispatch/scripts/dispatch_codex_desktop_thread.py`
+- Preferred runtime path:
+  - `"$CODEX_HOME/skills/thread-dispatch/scripts/dispatch_codex_run.py"`
+  - `"$CODEX_HOME/skills/thread-dispatch/scripts/dispatch_codex_desktop_thread.py"`
+- Repo-local alternative (when running from this repo root):
+  - `"./skills/thread-dispatch/scripts/dispatch_codex_run.py"`
+  - `"./skills/thread-dispatch/scripts/dispatch_codex_desktop_thread.py"`
 
 ## Inputs
 
@@ -37,10 +41,19 @@ It is best for long-running tasks or parallel work where the current thread shou
 
 ## Usage
 
+Set script paths once (runtime-path preferred; repo-local fallback shown in comments):
+
+```bash
+DISPATCH_SCRIPT="$CODEX_HOME/skills/thread-dispatch/scripts/dispatch_codex_run.py"
+DESKTOP_SCRIPT="$CODEX_HOME/skills/thread-dispatch/scripts/dispatch_codex_desktop_thread.py"
+# DISPATCH_SCRIPT="./skills/thread-dispatch/scripts/dispatch_codex_run.py"
+# DESKTOP_SCRIPT="./skills/thread-dispatch/scripts/dispatch_codex_desktop_thread.py"
+```
+
 ### 1) Dispatch with inline prompt (background)
 
 ```bash
-python3 /Users/slobodan/.codex/skills/thread-dispatch/scripts/dispatch_codex_run.py \
+python3 "$DISPATCH_SCRIPT" \
   --cwd /Users/slobodan/Projects/Oroboros \
   --prompt "Review open Linear blockers and write a concise summary." \
   --background
@@ -49,7 +62,7 @@ python3 /Users/slobodan/.codex/skills/thread-dispatch/scripts/dispatch_codex_run
 ### 2) Dispatch prompt from file (background)
 
 ```bash
-python3 /Users/slobodan/.codex/skills/thread-dispatch/scripts/dispatch_codex_run.py \
+python3 "$DISPATCH_SCRIPT" \
   --cwd /Users/slobodan/Projects/Oroboros \
   --prompt-file /Users/slobodan/Projects/Oroboros/tmp/worker_prompt.txt \
   --background
@@ -58,7 +71,7 @@ python3 /Users/slobodan/.codex/skills/thread-dispatch/scripts/dispatch_codex_run
 ### 3) Foreground run (stream to current terminal)
 
 ```bash
-python3 /Users/slobodan/.codex/skills/thread-dispatch/scripts/dispatch_codex_run.py \
+python3 "$DISPATCH_SCRIPT" \
   --cwd /Users/slobodan/Projects/Oroboros \
   --prompt "Summarize test failures in backend logs." \
   --foreground
@@ -71,7 +84,7 @@ Treat the profile path as a parameter (`codex_home`), not a fixed value.
 
 ```bash
 CODEX_HOME="$HOME/.codex-<profile-name>" \
-python3 /Users/slobodan/.codex/skills/thread-dispatch/scripts/dispatch_codex_run.py \
+python3 "$CODEX_HOME/skills/thread-dispatch/scripts/dispatch_codex_run.py" \
   --cwd /Users/slobodan/Projects/Oroboros \
   --prompt "Your prompt here" \
   --background
@@ -82,7 +95,7 @@ python3 /Users/slobodan/.codex/skills/thread-dispatch/scripts/dispatch_codex_run
 Equivalent to the shell-prefix approach above, but explicit in the script args.
 
 ```bash
-python3 /Users/slobodan/.codex/skills/thread-dispatch/scripts/dispatch_codex_run.py \
+python3 "$DISPATCH_SCRIPT" \
   --cwd /Users/slobodan/Projects/Oroboros \
   --prompt "Your prompt here" \
   --background \
@@ -104,14 +117,14 @@ python3 /Users/slobodan/.codex/skills/thread-dispatch/scripts/dispatch_codex_run
 To create a visible Codex Desktop chat thread:
 
 ```bash
-python3 /Users/slobodan/.codex/skills/thread-dispatch/scripts/dispatch_codex_desktop_thread.py \
+python3 "$DESKTOP_SCRIPT" \
   --prompt "just say good day back to me"
 ```
 
 From file:
 
 ```bash
-python3 /Users/slobodan/.codex/skills/thread-dispatch/scripts/dispatch_codex_desktop_thread.py \
+python3 "$DESKTOP_SCRIPT" \
   --prompt-file /Users/slobodan/Projects/Oroboros/tmp/prompt.txt
 ```
 

@@ -103,6 +103,12 @@ def branch_exists(repo_path: Path, branch_name: str) -> bool:
     return result.returncode == 0
 
 
+def branch_divergence(repo_path: Path, base_ref: str, branch_name: str) -> tuple[int, int]:
+    ahead = revlist_count(repo_path, f"{base_ref}...{branch_name}", right_only=True)
+    behind = revlist_count(repo_path, f"{base_ref}...{branch_name}", right_only=False)
+    return ahead, behind
+
+
 def working_tree_dirty(worktree_path: Path) -> bool:
     result = run(
         ["git", "-C", str(worktree_path), "status", "--porcelain"],
@@ -240,25 +246,45 @@ def main() -> int:
     if target_path.exists():
         return fail(f"target path already exists and is not a managed slot: {target_path}")
 
+    branch_already_exists = branch_exists(repo_root, branch_name)
+    if branch_already_exists:
+        try:
+            branch_ahead, branch_behind = branch_divergence(repo_root, base_ref, branch_name)
+        except Exception as exc:  # noqa: BLE001
+            return fail(str(exc))
+        if not args.force_reset_existing:
+            divergence_note = (
+                f" (ahead {branch_ahead}, behind {branch_behind} vs {base_ref})"
+                if branch_ahead > 0 or branch_behind > 0
+                else ""
+            )
+            return fail(
+                f"branch '{branch_name}' already exists{divergence_note}; "
+                "refusing to reset existing branch without --force-reset-existing"
+            )
+
     if args.dry_run:
-        print("[workstation] dry-run: would create new slot")
+        if branch_already_exists:
+            print("[workstation] dry-run: would create new slot and force-reset existing branch ref")
+        else:
+            print("[workstation] dry-run: would create new slot")
         return 0
 
+    add_args = [
+        "git",
+        "-C",
+        str(repo_root),
+        "worktree",
+        "add",
+        str(target_path),
+    ]
+    if branch_already_exists:
+        add_args.extend(["-B", branch_name, base_ref])
+    else:
+        add_args.extend(["-b", branch_name, base_ref])
+
     try:
-        run(
-            [
-                "git",
-                "-C",
-                str(repo_root),
-                "worktree",
-                "add",
-                "-B",
-                branch_name,
-                str(target_path),
-                base_ref,
-            ],
-            check=True,
-        )
+        run(add_args, check=True)
     except subprocess.CalledProcessError as exc:
         return fail(exc.stderr.strip() or str(exc))
 
