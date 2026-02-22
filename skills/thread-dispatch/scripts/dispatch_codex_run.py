@@ -60,6 +60,13 @@ def parse_args() -> argparse.Namespace:
         help="Directory for detached run logs. Default: <cwd>/.codex-dispatch",
     )
     parser.add_argument(
+        "--codex-home",
+        help=(
+            "Override CODEX_HOME for the spawned codex process "
+            "(same effect as prefixing the command with CODEX_HOME=...)"
+        ),
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print the command and metadata without starting it.",
@@ -93,6 +100,13 @@ def build_command(args: argparse.Namespace, prompt_text: str) -> list[str]:
     return cmd
 
 
+def build_env(args: argparse.Namespace) -> dict[str, str]:
+    env = os.environ.copy()
+    if args.codex_home:
+        env["CODEX_HOME"] = str(Path(args.codex_home).expanduser())
+    return env
+
+
 def main() -> int:
     args = parse_args()
     cwd = Path(args.cwd).expanduser().resolve()
@@ -107,6 +121,7 @@ def main() -> int:
         return 2
 
     cmd = build_command(args, prompt_text)
+    env = build_env(args)
     mode = "foreground" if args.foreground else "background"
     if args.foreground:
         args.background = False
@@ -126,7 +141,12 @@ def main() -> int:
         "command": cmd,
         "command_shell": shlex.join(cmd),
         "log_file": str(log_file),
+        "codex_home": env.get("CODEX_HOME"),
     }
+    if payload["codex_home"]:
+        payload["command_shell_with_env"] = (
+            f"CODEX_HOME={shlex.quote(payload['codex_home'])} " + shlex.join(cmd)
+        )
 
     if args.dry_run:
         print(json.dumps(payload, ensure_ascii=True, indent=2))
@@ -140,7 +160,7 @@ def main() -> int:
                 stdout=out,
                 stderr=subprocess.STDOUT,
                 start_new_session=True,
-                env=os.environ.copy(),
+                env=env,
             )
         payload["pid"] = proc.pid
         payload["status"] = "started"
@@ -150,7 +170,7 @@ def main() -> int:
     completed = subprocess.run(  # noqa: S603
         cmd,
         cwd=str(cwd),
-        env=os.environ.copy(),
+        env=env,
         check=False,
     )
     payload["status"] = "finished"
