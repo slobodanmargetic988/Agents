@@ -22,6 +22,9 @@ Inputs: linear_sync_log_path: reports/optimus-prime/LINEAR_SYNC_LOG.jsonl
 Inputs: identity_checkpoint_path: reports/optimus-prime/IDENTITY_CHECKPOINT.md
 Inputs: branch_lineage_path: reports/optimus-prime/BRANCH_LINEAGE.json
 Inputs: packet_require_start_point: true
+Inputs: codex_profile_aliases: codex=default
+Inputs: worker_codex_profile_policy: role:developer=codex; role:tester=codex; role:reviewer=codex
+Inputs: dispatch_codex_profile_mode: thread-dispatch-codex-home
 Inputs: developer_agent_path: agents/optimus-fullstack-developer/README.md
 Inputs: tester_agent_path: agents/optimus-fullstack-tester/README.md
 Inputs: reviewer_agent_path: agents/optimus-reviewer/README.md
@@ -54,6 +57,9 @@ Inputs: linear_sync_log_path: reports/optimus-prime/LINEAR_SYNC_LOG.jsonl
 Inputs: identity_checkpoint_path: reports/optimus-prime/IDENTITY_CHECKPOINT.md
 Inputs: branch_lineage_path: reports/optimus-prime/BRANCH_LINEAGE.json
 Inputs: packet_require_start_point: true
+Inputs: codex_profile_aliases: codex=default, codex-second=$HOME/.codex-second, codex-third=$HOME/.codex-third, codex-fourth=$HOME/.codex-fourth
+Inputs: worker_codex_profile_policy: role:developer=codex-second; role:tester=codex; role:reviewer=codex
+Inputs: dispatch_codex_profile_mode: thread-dispatch-codex-home
 Inputs: developer_agent_path: agents/optimus-fullstack-developer/README.md
 Inputs: tester_agent_path: agents/optimus-fullstack-tester/README.md
 Inputs: reviewer_agent_path: agents/optimus-reviewer/README.md

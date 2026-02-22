@@ -17,6 +17,9 @@ Inputs: max_initialized_workers: 10
 Inputs: max_running_workers: 6
 Inputs: branch_lineage_path: reports/optimus-prime/BRANCH_LINEAGE.json
 Inputs: packet_require_start_point: true
+Inputs: codex_profile_aliases: codex=default, codex-second=$HOME/.codex-second
+Inputs: worker_codex_profile_policy: role:developer=codex-second; role:tester=codex; role:reviewer=codex
+Inputs: dispatch_codex_profile_mode: thread-dispatch-codex-home
 Inputs: developer_agent_path: agents/optimus-fullstack-developer/README.md
 Inputs: tester_agent_path: agents/optimus-fullstack-tester/README.md
 Inputs: reviewer_agent_path: agents/optimus-reviewer/README.md
@@ -29,7 +32,7 @@ Output: reports/optimus-prime logs + continuous cycle summaries + completed dev/
 ### Expected Output
 ```text
 Optimus initializes workstation slots, starts only required developer threads, and keeps at most 6 running workers.
-Optimus dispatches complete unit packets and reuses workers by fixed role and fixed thinking profile.
+Optimus dispatches complete unit packets and reuses workers by fixed role, fixed thinking profile, and fixed Codex profile assignment.
 Tester starts after first developer completion; reviewer starts after first tester completion.
 No developer receives a new task until current task passes test and review.
 Optimus publishes concise cycle summary, sleeps 5 minutes, and repeats until 20 tasks are fully done.
@@ -47,6 +50,8 @@ Inputs: repo_root: ../Ouroboros
 Inputs: tracking_mode: automated-handoff
 Inputs: branch_lineage_path: reports/optimus-prime/BRANCH_LINEAGE.json
 Inputs: packet_require_start_point: true
+Inputs: codex_profile_aliases: codex=default, codex-second=$HOME/.codex-second
+Inputs: worker_codex_profile_policy: role:developer=codex-second; role:tester=codex; role:reviewer=codex
 Inputs: developer_agent_path: agents/optimus-fullstack-developer/README.md
 Inputs: tester_agent_path: agents/optimus-fullstack-tester/README.md
 Inputs: reviewer_agent_path: agents/optimus-reviewer/README.md
@@ -74,6 +79,9 @@ Inputs: repo_root: ../Ouroboros
 Inputs: tracking_mode: automated-handoff
 Inputs: branch_lineage_path: reports/optimus-prime/BRANCH_LINEAGE.json
 Inputs: packet_require_start_point: true
+Inputs: codex_profile_aliases: codex=default, codex-second=$HOME/.codex-second, codex-third=$HOME/.codex-third, codex-fourth=$HOME/.codex-fourth
+Inputs: worker_codex_profile_policy: slot:dev-1=codex-second; slot:dev-2=codex-second; slot:dev-3=codex-third; slot:test-1=codex-fourth; slot:review-1=codex-fourth
+Inputs: dispatch_codex_profile_mode: thread-dispatch-codex-home
 Inputs: developer_agent_path: agents/optimus-fullstack-developer/README.md
 Inputs: tester_agent_path: agents/optimus-fullstack-tester/README.md
 Inputs: reviewer_agent_path: agents/optimus-reviewer/README.md
@@ -111,4 +119,54 @@ Optimus stores MYO-51 branch and head commit in branch lineage registry after de
 MYO-52 packet includes start_from_branch and start_from_commit pointing to MYO-51 head.
 MYO-53 packet includes start anchor pointing to latest MYO-52 head.
 Workers always receive explicit branch starting point and continue without guesswork.
+```
+
+## Example 5: Role-Based Codex Profile Routing
+
+### Input
+```text
+Agent: optimus-prime
+Goal: Use a separate Codex profile for developers while testers and reviewer use default Codex.
+Inputs: primary_mission: Complete 10 ready tasks.
+Inputs: task_source: Ready tasks in current sprint.
+Inputs: repo_root: ../Ouroboros
+Inputs: tracking_mode: automated-handoff
+Inputs: codex_profile_aliases: codex=default, codex-second=$HOME/.codex-second
+Inputs: worker_codex_profile_policy: role:developer=codex-second; role:tester=codex; role:reviewer=codex
+Inputs: dispatch_codex_profile_mode: thread-dispatch-codex-home
+Constraints: Keep worker thread profile assignment stable after initialization.
+Output: background worker dispatch using role-based Codex profiles
+```
+
+### Expected Output
+```text
+Optimus assigns all developer slots to codex-second and tester/reviewer slots to default codex.
+Thread-dispatch invocations for developers include --codex-home $HOME/.codex-second.
+Tester and reviewer dispatches use default profile with no codex_home override.
+Worker registry records codex profile alias per initialized worker thread.
+```
+
+## Example 6: Per-Slot Codex Profile Routing
+
+### Input
+```text
+Agent: optimus-prime
+Goal: Pin each worker slot to a specific Codex profile.
+Inputs: primary_mission: Complete 20 ready tasks.
+Inputs: task_source: Ready tasks in current sprint.
+Inputs: repo_root: ../Ouroboros
+Inputs: tracking_mode: automated-handoff
+Inputs: codex_profile_aliases: codex=default, codex-second=$HOME/.codex-second, codex-third=$HOME/.codex-third, codex-fourth=$HOME/.codex-fourth
+Inputs: worker_codex_profile_policy: slot:dev-1=codex-second; slot:dev-2=codex-second; slot:dev-3=codex-third; slot:test-1=codex-fourth; slot:review-1=codex-fourth
+Inputs: dispatch_codex_profile_mode: thread-dispatch-codex-home
+Constraints: Keep slot profile stable for thread reuse across cycles.
+Output: background worker dispatch using slot-based Codex profiles
+```
+
+### Expected Output
+```text
+Optimus resolves profile assignment by slot override and persists it in worker registry.
+dev-1 and dev-2 use codex-second; dev-3 uses codex-third; tester/reviewer use codex-fourth.
+Each thread-dispatch command uses the correct --codex-home path for the assigned slot profile.
+Cycle summaries display worker slot + Codex profile alias for active and idle threads.
 ```
