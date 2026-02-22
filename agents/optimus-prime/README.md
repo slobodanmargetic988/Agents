@@ -15,6 +15,9 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Apply rate-gate behavior before dispatching new work:
   - default thresholds: `5h <= 15%`, `weekly <= 10%`
   - user-overridable thresholds supported
+- Apply soft concurrency throttle before dispatching new work:
+  - default thresholds: `5h <= 40%` OR `weekly <= 25%`
+  - reduce active background-worker concurrency to `3` (user-overridable) while soft-gated
 - Enter wind-down mode when gated profiles should not receive more work.
 - Sleep-until-reset and resume when gated limit resets within configured wait window (default `4h`).
 - Keep at most `10` initialized workers and at most `6` running workers at once.
@@ -78,6 +81,9 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
   - `dispatch_codex_profile_mode` (default: `thread-dispatch-codex-home`)
   - `rate_gate_5h_percent` (default: `15`)
   - `rate_gate_weekly_percent` (default: `10`)
+  - `soft_rate_gate_5h_percent` (default: `40`)
+  - `soft_rate_gate_weekly_percent` (default: `25`)
+  - `soft_rate_gated_max_running_workers` (default: `3`)
   - `rate_reset_wait_max_hours` (default: `4`)
   - `status_check_interval_cycles` (default: `1` = every cycle)
   - `status_check_on_start` (default: `true`)
@@ -115,6 +121,7 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Rate parsing must capture, at minimum, from latest relevant `token_count` event per profile:
   - 5h used/remaining percent and reset time (from primary window)
   - weekly used/remaining percent and reset time (from secondary window)
+- Rate parsing should also capture per-profile soft concurrency throttle signal from the `codex-rate-snapshot` skill output.
 - Profile identity classification (`single-user` vs `multiple-users`) should use profile `auth.json` account/email when available.
 
 ## Rate Management Model
@@ -127,6 +134,10 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Rate gates (defaults, user-overridable):
   - 5h gate: `<= 15%` remaining
   - weekly gate: `<= 10%` remaining
+- Soft concurrency gate (defaults, user-overridable):
+  - soft 5h gate: `<= 40%` remaining
+  - soft weekly gate: `<= 25%` remaining
+  - when soft-gated, cap active background workers at `3` (`soft_rate_gated_max_running_workers`)
 - Reset wait rule:
   - if gated limit reset is within `rate_reset_wait_max_hours` (default `4h`), Optimus may sleep until reset and resume
   - otherwise Optimus should wind down and stop after active workers finish
@@ -134,6 +145,10 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
   - single profile (default): any gate hit on primary profile -> stop issuing new work
   - multi-profile `single-user`: treat rate pool as shared; any gate hit on the shared account -> stop issuing new work globally
   - multi-profile `multiple-users`: gate dispatch per-profile; keep assigning work only to workers on profiles still above gate
+- Soft concurrency throttle behavior:
+  - single profile or multi-profile `single-user`: if any checked/shared profile is soft-gated, reduce total active background workers to `soft_rate_gated_max_running_workers`
+  - multi-profile `multiple-users`: apply soft throttle per profile alias (do not assign enough new work to exceed the soft-gated profile's active worker cap)
+  - soft throttle limits new dispatch only; do not kill active workers
 
 ## Primary Worker Agents
 - Developer worker:
@@ -210,9 +225,9 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - `reports/optimus-prime/prompts/`
   - generated worker prompt packets used for dispatch
 - `reports/optimus-prime/PROFILE_RATE_REGISTRY.json`
-  - current parsed rate snapshot per profile alias from session JSONL token_count events (`account`, `5h`, `weekly`, reset times, gated flags, eligibility`, source session path)
+  - current parsed rate snapshot per profile alias from session JSONL token_count events (`account`, `5h`, `weekly`, hard-gate flags, soft_concurrency_gated, eligibility`, source session path)
 - `reports/optimus-prime/RATE_STATUS_LOG.jsonl`
-  - timestamped rate snapshots and rate-gate decisions (`continue`, `wait_until_reset`, `wind_down`)
+  - timestamped rate snapshots and rate decisions (hard gate + soft throttle + `continue|wait_until_reset|wind_down`)
 
 ## Workflow
 1. Load mission scope and gather candidate tasks from `task_source`.
@@ -237,10 +252,13 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
    - run on startup when `status_check_on_start=true`
    - then every `status_check_interval_cycles`
    - invoke `codex-rate-snapshot` skill once per check window with all configured profile aliases (`codex_profile_aliases`)
-   - pass current gate thresholds (`rate_gate_5h_percent`, `rate_gate_weekly_percent`, `rate_reset_wait_max_hours`)
+   - pass current hard-gate thresholds (`rate_gate_5h_percent`, `rate_gate_weekly_percent`)
+   - pass current soft-throttle thresholds (`soft_rate_gate_5h_percent`, `soft_rate_gate_weekly_percent`, `soft_rate_gated_max_running_workers`)
+   - pass reset wait window (`rate_reset_wait_max_hours`)
    - parse skill JSON output for:
      - per-profile 5h/weekly used/remaining/reset fields
      - per-profile eligibility and recommended action
+     - per-profile `soft_concurrency_gated` flag and top-level soft-throttle cap metadata
      - account identity (from `auth.json`, best effort)
    - derive `profile_running_mode` (`single-user` or `multiple-users`)
    - update `PROFILE_RATE_REGISTRY.json` and append `RATE_STATUS_LOG.jsonl`
@@ -254,6 +272,10 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
      - do not assign new work to workers on gated profiles
      - continue assigning work to eligible profiles even if primary profile is gated
      - if no eligible profiles remain, apply wait-until-reset (< window) or wind-down/stop
+   - evaluate soft concurrency throttle after hard-gate eligibility:
+     - single profile or `single-user`: if soft-gated, reduce effective `max_running_workers` to `soft_rate_gated_max_running_workers`
+     - `multiple-users`: keep global `max_running_workers` cap, and also apply per-profile active-worker cap `soft_rate_gated_max_running_workers` to soft-gated profile aliases
+     - do not terminate running workers to satisfy soft throttle; enforce on new dispatch decisions only
 8. Ensure workstation slots exist by running `workstation-preparation` for each needed slot.
 9. Initialize worker threads with fixed role + fixed thinking profile:
    - medium thinking for medium complexity work
@@ -283,6 +305,7 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
    - task state per worker
    - worker Codex profile per slot (`codex`, `codex-second`, etc.)
    - rate-gate state per checked profile (`eligible`, `gated`, `waiting-reset`, `wind-down`)
+   - soft-throttle state per checked profile (`soft_concurrency_gated=true|false`) and effective running-worker caps
    - derived `profile_running_mode` (`single-user` or `multiple-users`)
    - current branch lineage anchors for active tasks
    - blockers and planned next dispatch
@@ -310,6 +333,9 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Do not dispatch new work to a worker whose assigned profile is rate-gated.
 - In `single-user` mode, treat gate hit as global dispatch gate across all profiles.
 - In `multiple-users` mode, gate only the affected profiles and continue on eligible profiles.
+- In single-profile or `single-user` mode, if soft concurrency gate is hit, do not exceed `soft_rate_gated_max_running_workers` active background workers.
+- In `multiple-users` mode, if a profile alias is soft-gated, do not exceed `soft_rate_gated_max_running_workers` active background workers assigned to that profile alias.
+- Soft concurrency throttle must only limit new dispatch; it must not forcibly terminate active workers.
 - If session token_count rate snapshot cannot be read/parsed for a profile, mark that profile non-eligible for new work until refreshed successfully.
 - For branch-on-branch tasks, starting point must reference the correct unmerged parent branch head commit from lineage registry.
 - If requested branch checkout fails because branch is active elsewhere, worker must create role-specific fallback branch (for example `MYO-23-make-menu-navbar-test`) and report it.
@@ -320,6 +346,7 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Every running worker has one active packet and one assigned workstation.
 - Every initialized worker has resolved `codex_profile_alias` and `codex_home` (or explicit default profile marker).
 - Profile rate registry includes parsed profile identity and 5h/weekly limit status for every checked profile alias.
+- Profile rate registry includes `soft_concurrency_gated` state for every checked profile alias.
 - Derived `profile_running_mode` is recorded (`single-user` or `multiple-users`).
 - Every unit packet includes mission context, branch policy, acceptance target, and handoff contract.
 - Every unit packet includes valid start anchor fields and lineage parent when dependency is unmerged.

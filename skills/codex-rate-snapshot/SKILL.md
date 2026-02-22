@@ -32,6 +32,9 @@ This is intended for orchestrators (for example `optimus-prime`) to make dispatc
   - examples: `codex=default`, `codex-second=$HOME/.codex-second`
 - `--gate-5h-percent` (optional, default `15`)
 - `--gate-weekly-percent` (optional, default `10`)
+- `--soft-gate-5h-percent` (optional, default `40`)
+- `--soft-gate-weekly-percent` (optional, default `25`)
+- `--soft-max-active-workers` (optional, default `3`)
 - `--wait-max-hours` (optional, default `4`)
 - `--json-pretty` (optional)
 
@@ -51,6 +54,9 @@ python3 /Users/slobodan/.codex/skills/codex-rate-snapshot/scripts/read_codex_rat
   --profile codex-third=$HOME/.codex-third \
   --gate-5h-percent 15 \
   --gate-weekly-percent 10 \
+  --soft-gate-5h-percent 40 \
+  --soft-gate-weekly-percent 25 \
+  --soft-max-active-workers 3 \
   --wait-max-hours 4 \
   --json-pretty
 ```
@@ -60,10 +66,12 @@ python3 /Users/slobodan/.codex/skills/codex-rate-snapshot/scripts/read_codex_rat
 Top-level fields include:
 - `generated_at`
 - `gate_thresholds`
+- `soft_concurrency` (soft throttle thresholds + recommended active-worker cap when soft-gated)
 - `profiles` (map keyed by alias)
 - `profile_running_mode` (`single-profile`, `single-user`, `multiple-users`, or `unknown`)
 - `eligible_profiles`
 - `gated_profiles`
+- `soft_concurrency_gated_profiles`
 
 Each profile entry includes:
 - `codex_home`
@@ -71,6 +79,7 @@ Each profile entry includes:
 - `session_file`
 - `five_hour` and `weekly` windows (`used_percent`, `remaining_percent`, `reset_at`, `gated`)
 - `recommended_action` (`continue`, `wait_until_reset`, `wind_down`)
+- `soft_concurrency_gated` (true when 5h/weekly remaining is under soft throttle thresholds)
 - `wait_until_reset_candidate` and `wait_seconds` when applicable
 
 ## Notes

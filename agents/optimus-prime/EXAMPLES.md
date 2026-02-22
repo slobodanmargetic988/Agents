@@ -185,6 +185,9 @@ Inputs: codex_profile_aliases: codex=default
 Inputs: worker_codex_profile_policy: role:developer=codex; role:tester=codex; role:reviewer=codex
 Inputs: rate_gate_5h_percent: 15
 Inputs: rate_gate_weekly_percent: 10
+Inputs: soft_rate_gate_5h_percent: 40
+Inputs: soft_rate_gate_weekly_percent: 25
+Inputs: soft_rate_gated_max_running_workers: 3
 Inputs: rate_reset_wait_max_hours: 4
 Inputs: status_check_interval_cycles: 1
 Inputs: status_check_on_start: true
@@ -197,6 +200,7 @@ Output: rate-aware orchestration with wind-down or wait-and-resume behavior
 ```text
 Optimus runs codex-rate-snapshot for the primary codex profile at startup and every cycle.
 If a limit crosses configured gate, Optimus stops dispatching new work immediately.
+If hard gates are not hit but soft gate is hit, Optimus reduces active background workers to 3 and only hands out new work within that cap.
 If reset is within 4h, Optimus sleeps until reset and resumes dispatch.
 If reset is farther than 4h, Optimus enters wind-down and stops after active workers complete.
 ```
@@ -216,6 +220,9 @@ Inputs: worker_codex_profile_policy: slot:dev-1=codex-second; slot:dev-2=codex-t
 Inputs: dispatch_codex_profile_mode: thread-dispatch-codex-home
 Inputs: rate_gate_5h_percent: 15
 Inputs: rate_gate_weekly_percent: 10
+Inputs: soft_rate_gate_5h_percent: 40
+Inputs: soft_rate_gate_weekly_percent: 25
+Inputs: soft_rate_gated_max_running_workers: 3
 Inputs: rate_reset_wait_max_hours: 4
 Inputs: status_check_interval_cycles: 1
 Inputs: status_check_on_start: true
@@ -229,5 +236,6 @@ Output: profile-selective dispatch based on per-profile rate eligibility
 Optimus runs codex-rate-snapshot for codex, codex-second, and codex-third and parses profile identities.
 If account identities differ, Optimus records profile-running-mode as multiple-users.
 When primary codex profile falls below rate gate, Optimus can still dispatch work to workers on codex-second/codex-third if they remain above gate.
+If a profile is not hard-gated but is soft-gated, Optimus throttles active workers on that profile to the soft cap instead of stopping it entirely.
 Optimus stops assigning work to any profile once that profile reaches gate and applies wait-or-wind-down when no eligible profiles remain.
 ```

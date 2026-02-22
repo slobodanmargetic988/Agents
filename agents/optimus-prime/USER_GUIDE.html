@@ -221,7 +221,7 @@
           <li>Uses default worker trio: optimus-fullstack-developer, optimus-fullstack-tester, optimus-reviewer.</li>
           <li>Keeps role/thinking-profile worker threads reusable.</li>
           <li>Can pin worker slots/roles to different Codex profiles (codex, codex-second, codex-third, etc.).</li>
-          <li>Monitors profile rate snapshots (session JSONL token_count) across profiles and rate-gates new dispatch when limits run low.</li>
+          <li>Monitors profile rate snapshots (session JSONL token_count) across profiles, hard-gates low-limit dispatch, and soft-throttles concurrency before hard stop.</li>
           <li>Owns all Linear updates; workers do not use Linear skill.</li>
           <li>Runs uninterrupted cycles until mission target is complete.</li>
         </ul>
@@ -256,9 +256,10 @@
         <ul>
           <li>Runs <code>codex-rate-snapshot</code> on primary and configured worker profiles (default every cycle).</li>
           <li>Uses profile identity (best effort from <code>auth.json</code>) to derive <code>single-user</code> vs <code>multiple-users</code> mode.</li>
-          <li>Default gates: 5h &lt;= 15%, weekly &lt;= 10% (user-overridable).</li>
+          <li>Default hard gates: 5h &lt;= 15%, weekly &lt;= 10% (user-overridable).</li>
+          <li>Default soft throttle gate: 5h &lt;= 40% or weekly &lt;= 25% - cap active background workers to 3 (user-overridable).</li>
           <li>If reset is under 4h, Optimus may sleep until reset and continue; otherwise wind down after active workers finish.</li>
-          <li>In multi-user mode, dispatch is gated per profile so healthy profiles can keep working.</li>
+          <li>In multi-user mode, hard gates and soft throttle are applied per profile so healthy profiles can keep working.</li>
         </ul>
       </section>
 
@@ -275,7 +276,7 @@
 
       <section class="card span-12">
         <h2>Execution Flow</h2>
-        <div class="flow">RESOLVE START ANCHOR + CODEX PROFILE -> RUN RATE SNAPSHOT SKILL + RATE GATES -> PREPARE SLOT -> DISPATCH DEV -> SLEEP 5m -> DEV DONE (UPDATE LINEAGE) -> DISPATCH TEST -> TEST PASS -> DISPATCH REVIEW -> REVIEW PASS -> LINEAR SYNC -> NEXT UNIT</div>
+        <div class="flow">RESOLVE START ANCHOR + CODEX PROFILE -> RUN RATE SNAPSHOT SKILL + HARD/SOFT RATE CHECKS -> PREPARE SLOT -> DISPATCH DEV -> SLEEP 5m -> DEV DONE (UPDATE LINEAGE) -> DISPATCH TEST -> TEST PASS -> DISPATCH REVIEW -> REVIEW PASS -> LINEAR SYNC -> NEXT UNIT</div>
         <p class="footer-note">
           If a phase fails, Optimus routes the task back to the required phase (dev fix, retest, rereview) until fully accepted.
         </p>

@@ -38,6 +38,7 @@ class ProfileSnapshot:
     five_hour: WindowSnapshot
     weekly: WindowSnapshot
     recommended_action: str
+    soft_concurrency_gated: bool
     wait_until_reset_candidate: bool
     wait_seconds: int | None
     errors: list[str]
@@ -53,6 +54,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--gate-5h-percent", type=float, default=15.0)
     parser.add_argument("--gate-weekly-percent", type=float, default=10.0)
+    parser.add_argument("--soft-gate-5h-percent", type=float, default=40.0)
+    parser.add_argument("--soft-gate-weekly-percent", type=float, default=25.0)
+    parser.add_argument("--soft-max-active-workers", type=int, default=3)
     parser.add_argument("--wait-max-hours", type=float, default=4.0)
     parser.add_argument("--json-pretty", action="store_true")
     return parser.parse_args()
@@ -212,6 +216,12 @@ def build_window(window_dict: dict[str, Any] | None, gate_percent: float) -> Win
     return WindowSnapshot(used, remaining, reset_at, hours_until, gated)
 
 
+def window_soft_gated(window: WindowSnapshot, soft_gate_percent: float) -> bool:
+    if window.remaining_percent is None:
+        return True
+    return window.remaining_percent <= soft_gate_percent
+
+
 def maybe_read_auth_identity(codex_home: Path) -> tuple[str | None, str | None]:
     candidates = [codex_home / "auth.json", codex_home / "config" / "auth.json"]
     for path in candidates:
@@ -313,7 +323,15 @@ def find_account_label(node: Any) -> str | None:
     return None
 
 
-def build_profile_snapshot(alias: str, codex_home: Path, gate_5h: float, gate_weekly: float, wait_max_hours: float) -> ProfileSnapshot:
+def build_profile_snapshot(
+    alias: str,
+    codex_home: Path,
+    gate_5h: float,
+    gate_weekly: float,
+    soft_gate_5h: float,
+    soft_gate_weekly: float,
+    wait_max_hours: float,
+) -> ProfileSnapshot:
     errors: list[str] = []
     session_file = newest_session_jsonl(codex_home)
     account_identity, account_source = maybe_read_auth_identity(codex_home)
@@ -332,6 +350,7 @@ def build_profile_snapshot(alias: str, codex_home: Path, gate_5h: float, gate_we
             five_hour=five,
             weekly=weekly,
             recommended_action="wind_down",
+            soft_concurrency_gated=True,
             wait_until_reset_candidate=False,
             wait_seconds=None,
             errors=errors,
@@ -357,6 +376,7 @@ def build_profile_snapshot(alias: str, codex_home: Path, gate_5h: float, gate_we
             five_hour=five,
             weekly=weekly,
             recommended_action="wind_down",
+            soft_concurrency_gated=True,
             wait_until_reset_candidate=False,
             wait_seconds=None,
             errors=errors,
@@ -388,6 +408,8 @@ def build_profile_snapshot(alias: str, codex_home: Path, gate_5h: float, gate_we
         else:
             recommended_action = "wind_down"
 
+    soft_concurrency_gated = window_soft_gated(five, soft_gate_5h) or window_soft_gated(weekly, soft_gate_weekly)
+
     return ProfileSnapshot(
         alias=alias,
         codex_home=str(codex_home),
@@ -398,6 +420,7 @@ def build_profile_snapshot(alias: str, codex_home: Path, gate_5h: float, gate_we
         five_hour=five,
         weekly=weekly,
         recommended_action=recommended_action,
+        soft_concurrency_gated=soft_concurrency_gated,
         wait_until_reset_candidate=wait_candidate,
         wait_seconds=wait_seconds,
         errors=errors,
@@ -440,6 +463,7 @@ def to_json_obj(profile: ProfileSnapshot) -> dict[str, Any]:
         "five_hour": window_obj(profile.five_hour),
         "weekly": window_obj(profile.weekly),
         "recommended_action": profile.recommended_action,
+        "soft_concurrency_gated": profile.soft_concurrency_gated,
         "wait_until_reset_candidate": profile.wait_until_reset_candidate,
         "wait_seconds": profile.wait_seconds,
         "eligible_for_new_work": profile.recommended_action == "continue",
@@ -464,6 +488,8 @@ def main() -> int:
                 codex_home=codex_home,
                 gate_5h=args.gate_5h_percent,
                 gate_weekly=args.gate_weekly_percent,
+                soft_gate_5h=args.soft_gate_5h_percent,
+                soft_gate_weekly=args.soft_gate_weekly_percent,
                 wait_max_hours=args.wait_max_hours,
             )
         )
@@ -472,6 +498,7 @@ def main() -> int:
     profiles_obj = {p.alias: to_json_obj(p) for p in profiles}
     eligible_profiles = [p.alias for p in profiles if p.recommended_action == "continue"]
     gated_profiles = [p.alias for p in profiles if p.recommended_action != "continue"]
+    soft_concurrency_gated_profiles = [p.alias for p in profiles if p.soft_concurrency_gated]
 
     output = {
         "generated_at": now_utc().isoformat(),
@@ -480,9 +507,15 @@ def main() -> int:
             "weekly_percent": args.gate_weekly_percent,
             "wait_max_hours": args.wait_max_hours,
         },
+        "soft_concurrency": {
+            "five_hour_percent": args.soft_gate_5h_percent,
+            "weekly_percent": args.soft_gate_weekly_percent,
+            "max_active_workers_when_gated": args.soft_max_active_workers,
+        },
         "profile_running_mode": mode,
         "eligible_profiles": eligible_profiles,
         "gated_profiles": gated_profiles,
+        "soft_concurrency_gated_profiles": soft_concurrency_gated_profiles,
         "profiles": profiles_obj,
     }
 
