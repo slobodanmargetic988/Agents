@@ -16,7 +16,12 @@ Inputs: sleep_minutes: 5
 Inputs: max_initialized_workers: 10
 Inputs: max_running_workers: 6
 Inputs: branch_lineage_path: reports/optimus-prime/BRANCH_LINEAGE.json
+Inputs: feature_lane_registry_path: reports/optimus-prime/FEATURE_LANES.json
 Inputs: packet_require_start_point: true
+Inputs: feature_parallelism_policy: feature-affinity-first
+Inputs: feature_grouping_fields: parent_issue,epic,label:feature
+Inputs: allow_multi_developers_per_feature_when_blocked: true
+Inputs: feature_lane_reassignment_policy: sticky-until-complete-or-blocked
 Inputs: codex_profile_aliases: codex=default, codex-second=$HOME/.codex-second
 Inputs: worker_codex_profile_policy: role:developer=codex-second; role:tester=codex; role:reviewer=codex
 Inputs: dispatch_codex_profile_mode: thread-dispatch-codex-home
@@ -32,6 +37,7 @@ Output: reports/optimus-prime logs + continuous cycle summaries + completed dev/
 ### Expected Output
 ```text
 Optimus initializes workstation slots, starts only required developer threads, and keeps at most 6 running workers.
+When multiple features are ready, Optimus assigns developers across different features first and keeps feature lanes sticky.
 Optimus dispatches complete unit packets and reuses workers by fixed role, fixed thinking profile, and fixed Codex profile assignment.
 Tester starts after first developer completion; reviewer starts after first tester completion.
 No developer receives a new task until current task passes test and review.
@@ -243,4 +249,32 @@ When primary codex profile falls below rate gate, Optimus can still dispatch wor
 If a profile is not hard-gated but is soft-gated, Optimus throttles active workers on that profile to the soft cap instead of stopping it entirely.
 Worker dispatches still use MCP minimization: reviewers/devs run with all MCPs disabled by default, testers get browser MCPs only when a test packet explicitly needs browser verification, and workers never get linear/linear_sse MCP access.
 Optimus stops assigning work to any profile once that profile reaches gate and applies wait-or-wind-down when no eligible profiles remain.
+```
+
+## Example 9: Feature-Lane Parallelization With Sticky Developer Assignment
+
+### Input
+```text
+Agent: optimus-prime
+Goal: Run three feature streams in parallel without mixing developers across features unless blocked.
+Inputs: primary_mission: Complete ready subtasks under features FTR-A, FTR-B, and FTR-C.
+Inputs: task_source: Ready subtasks grouped under parent feature issues FTR-A, FTR-B, FTR-C.
+Inputs: repo_root: ../Ouroboros
+Inputs: tracking_mode: automated-handoff
+Inputs: feature_lane_registry_path: reports/optimus-prime/FEATURE_LANES.json
+Inputs: feature_parallelism_policy: feature-affinity-first
+Inputs: feature_grouping_fields: parent_issue,epic,label:feature
+Inputs: allow_multi_developers_per_feature_when_blocked: true
+Inputs: feature_lane_reassignment_policy: sticky-until-complete-or-blocked
+Inputs: worker_role_policy: developers up to 3, testers up to 2, reviewer up to 1
+Constraints: Prefer one developer per feature while multiple features have ready unblocked subtasks. If one feature lane is blocked, allow temporary same-feature parallelism on remaining features using issue-scoped branches.
+Output: developer-to-feature lane mapping persisted and referenced in cycle summaries
+```
+
+### Expected Output
+```text
+Optimus assigns dev-1->FTR-A, dev-2->FTR-B, dev-3->FTR-C while all three features have ready work.
+Developers stay on their assigned feature lanes across cycles instead of mix-and-match reassignments.
+If FTR-C blocks, Optimus may temporarily assign dev-3 to a second issue under FTR-A or FTR-B, but keeps work issue-scoped with separate branches.
+Feature lane state and reassignment reasons are recorded in FEATURE_LANES.json and cycle summaries.
 ```

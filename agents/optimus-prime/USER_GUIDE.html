@@ -243,6 +243,17 @@
       </section>
 
       <section class="card span-6">
+        <h2>Feature Lanes</h2>
+        <ul>
+          <li>When multiple features are ready, Optimus assigns developers across distinct features first.</li>
+          <li>Developer-to-feature assignment is sticky (avoid mix-and-match reassignment every cycle).</li>
+          <li>If cross-feature parallelism is blocked, Optimus may place multiple developers on one feature temporarily.</li>
+          <li>Same-feature parallel work must stay issue-scoped on separate issue branches.</li>
+          <li>Lane state is tracked in <code>FEATURE_LANES.json</code> and shown in cycle summaries.</li>
+        </ul>
+      </section>
+
+      <section class="card span-6">
         <h2>Codex Profile Routing</h2>
         <ul>
           <li>Role-based policy example: developers on <code>codex-second</code>, tester/reviewer on <code>codex</code>.</li>
@@ -288,7 +299,7 @@
 
       <section class="card span-12">
         <h2>Execution Flow</h2>
-        <div class="flow">RESOLVE START ANCHOR + CODEX PROFILE + MCP ALLOWLIST -> RUN RATE SNAPSHOT SKILL + HARD/SOFT RATE CHECKS -> PREPARE SLOT -> DISPATCH DEV -> SLEEP 5m -> DEV DONE (UPDATE LINEAGE) -> DISPATCH TEST -> TEST PASS -> DISPATCH REVIEW -> REVIEW PASS -> LINEAR SYNC -> NEXT UNIT</div>
+        <div class="flow">RESOLVE START ANCHOR + FEATURE LANE + CODEX PROFILE + MCP ALLOWLIST -> RUN RATE SNAPSHOT SKILL + HARD/SOFT RATE CHECKS -> PREPARE SLOT -> DISPATCH DEV -> SLEEP 5m -> DEV DONE (UPDATE LINEAGE + FEATURE LANE) -> DISPATCH TEST -> TEST PASS -> DISPATCH REVIEW -> REVIEW PASS -> LINEAR SYNC -> NEXT UNIT</div>
         <p class="footer-note">
           If a phase fails, Optimus routes the task back to the required phase (dev fix, retest, rereview) until fully accepted.
         </p>

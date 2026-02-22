@@ -6,6 +6,7 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 
 ## In Scope
 - Convert the primary mission into absolute unit-of-work packets (one packet = one owner = one clear finish condition).
+- Group units by feature and prefer feature-parallel development lanes (one developer per active feature when possible).
 - Run orchestration in repeating 5-minute cycles.
 - Initialize workstation slots with `workstation-preparation` skill before worker launch.
 - Maintain worker registry with fixed role + fixed thinking profile per thread (`medium` or `high`) and reuse threads in that mode.
@@ -26,6 +27,10 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
   - `1-3` ready tasks -> `1` developer
   - `4-9` ready tasks -> `2` developers
   - `>=10` ready tasks -> `3` developers
+- Keep developer-to-feature affinity sticky:
+  - when multiple features are ready, assign developers across different features first
+  - keep a developer on the same feature until that feature lane is complete or blocked
+  - allow multiple developers on one feature only when cross-feature parallelism is not possible (blockers/dependency waits) or no other ready feature exists
 - Keep tester/reviewer caps:
   - max `2` testers
   - max `1` reviewer
@@ -69,7 +74,12 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
   - `linear_sync_log_path` (default: `reports/optimus-prime/LINEAR_SYNC_LOG.jsonl`)
   - `identity_checkpoint_path` (default: `reports/optimus-prime/IDENTITY_CHECKPOINT.md`)
   - `branch_lineage_path` (default: `reports/optimus-prime/BRANCH_LINEAGE.json`)
+  - `feature_lane_registry_path` (default: `reports/optimus-prime/FEATURE_LANES.json`)
   - `packet_require_start_point` (default: `true`)
+  - `feature_parallelism_policy` (default: `feature-affinity-first`)
+  - `feature_grouping_fields` (default: `parent_issue,epic,label:feature`)
+  - `allow_multi_developers_per_feature_when_blocked` (default: `true`)
+  - `feature_lane_reassignment_policy` (default: `sticky-until-complete-or-blocked`)
   - `codex_profile_aliases` (default: `codex=default`)
   - `worker_codex_profile_policy` (default: all workers use `codex`)
     - supports role defaults and slot overrides
@@ -112,6 +122,7 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 
 ## Tracking Mode: automated-handoff
 - Canonical state is Optimus-managed local orchestration files plus live worker-session status and branch lineage state.
+- Canonical state includes feature-lane mapping (developer slot -> feature key -> active issue).
 - Canonical state also includes profile rate-status registry for dispatch gating decisions.
 - Worker agents must not use the `linear` skill.
 - Worker agents should only use skills strictly required for their assigned unit of work.
@@ -226,7 +237,7 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 
 ## Outputs
 - `reports/optimus-prime/WORKER_REGISTRY.json`
-  - worker slot map, thinking profile, role, Codex profile alias/home, MCP dispatch mode/allowlist, session state (`running|idle|stopped|blocked`)
+  - worker slot map, thinking profile, role, Codex profile alias/home, MCP dispatch mode/allowlist, feature lane assignment, session state (`running|idle|stopped|blocked`)
 - `reports/optimus-prime/CYCLE_LOG.jsonl`
   - cycle summaries, dispatch decisions, sleep/skip-sleep actions
 - `reports/optimus-prime/HANDOFF_LOG.jsonl`
@@ -237,6 +248,8 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
   - short self-reminder to reload mission, constraints, and worker-control rules every few cycles
 - `reports/optimus-prime/BRANCH_LINEAGE.json`
   - branch ancestry and anchor mapping for unmerged work (`task_identifier`, `branch`, `start_from_branch`, `start_from_commit`, `head_commit`, `parent_task_identifier`)
+- `reports/optimus-prime/FEATURE_LANES.json`
+  - current feature grouping map (`feature_key`, `ready_units`, `blocked_units`, `assigned_developer_slots`, `lane_state`)
 - `reports/optimus-prime/prompts/`
   - generated worker prompt packets used for dispatch
 - `reports/optimus-prime/PROFILE_RATE_REGISTRY.json`
@@ -247,6 +260,10 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 ## Workflow
 1. Load mission scope and gather candidate tasks from `task_source`.
 2. Filter to actionable tasks and build deterministic unit-of-work packets.
+2a. Build feature groups from packet metadata:
+   - derive `feature_key` using `feature_grouping_fields` precedence (for example parent issue, epic, feature label)
+   - maintain lane map with per-feature ready/blocked unit counts
+   - mark units with unresolved dependencies as blocked within their feature lane
 3. Resolve branch lineage start point for each packet:
    - merged-independent task: start from integration base branch head
    - dependent unmerged task: start from parent task branch head commit
@@ -256,6 +273,13 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
      - `parent_task_identifier` (when applicable)
      - `parent_branch` (when applicable)
 4. Compute required worker counts using caps and scaling rules.
+4a. Assign developer feature lanes using `feature_parallelism_policy`:
+   - if multiple ready features exist, assign developers across distinct features first
+   - keep existing developer->feature affinity sticky per `feature_lane_reassignment_policy`
+   - only place multiple developers on the same feature when:
+     - no other feature has ready unblocked work, or
+     - cross-feature parallelism is blocked by dependencies and `allow_multi_developers_per_feature_when_blocked=true`
+   - when multiple developers share one feature, each packet must remain issue-scoped with its own issue branch
 5. Resolve worker Codex profile assignments from inputs:
    - parse `codex_profile_aliases` into alias -> `CODEX_HOME` path map (`codex=default` allowed)
    - apply `worker_codex_profile_policy` with precedence:
@@ -316,6 +340,10 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
      - use thread-dispatch `--disable-all-mcp` by default
      - use thread-dispatch `--enable-only-mcp` when packet requires specific MCPs
 10. Record all initialized threads in `WORKER_REGISTRY.json` and mark run-state.
+10a. Record/update feature lane state in `FEATURE_LANES.json`:
+   - assigned developer slot per feature
+   - lane blocked/active status
+   - reassignment reason when a developer changes feature lane
 11. Dispatch first developer unit packet and start cycle loop.
 12. At each cycle:
    - ingest worker outputs and session health
@@ -326,6 +354,7 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
    - start reviewer only after first tester completion
    - enforce fix/retest/review loop when tester or reviewer rejects work
    - keep one-task-at-a-time per developer until review pass
+   - keep developer feature affinity stable unless lane is complete/blocked or user steering requests reassignment
    - keep testers waiting on reviewer outcome for their active task
 13. Before sleep, post concise control update in orchestrator chat:
    - active workers
@@ -333,6 +362,7 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
    - task state per worker
    - worker Codex profile per slot (`codex`, `codex-second`, etc.)
    - worker MCP mode per slot (`disable-all` or `enable-only:<list>`)
+   - developer feature lanes (`dev slot -> feature key -> issue`)
    - rate-gate state per checked profile (`eligible`, `gated`, `waiting-reset`, `wind-down`)
    - soft-throttle state per checked profile (`soft_concurrency_gated=true|false`) and effective running-worker caps
    - derived `profile_running_mode` (`single-user` or `multiple-users`)
@@ -350,6 +380,9 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Optimus must not exceed `10` initialized workers.
 - Optimus must not exceed `6` concurrently running workers.
 - Do not run more than `3` developer workers, `2` tester workers, `1` reviewer worker.
+- When at least N distinct ready features exist and N developers are active, assign developers to distinct features before assigning two developers to the same feature.
+- Keep developer feature assignment sticky; do not mix-and-match developer lanes each cycle unless feature lane is complete/blocked or user steering requires reassignment.
+- If multiple developers must work on the same feature, units must remain issue-scoped with separate issue branches.
 - Do not assign a new task to a developer before previous task has passed both test and review.
 - Do not assign a new task to a tester before reviewer result is known for tester's current task.
 - Worker prompts must include complete branch/worktree/task acceptance context.
@@ -380,6 +413,8 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Every running worker has one active packet and one assigned workstation.
 - Every initialized worker has resolved `codex_profile_alias` and `codex_home` (or explicit default profile marker).
 - Every initialized/running worker has recorded MCP dispatch mode (`disable-all` or `enable-only`) and allowlist (if any).
+- Every active developer has a recorded `feature_key` lane assignment (or explicit `idle-unassigned` state).
+- `FEATURE_LANES.json` is updated when developers are assigned/reassigned and when lane state changes.
 - Profile rate registry includes parsed profile identity and 5h/weekly limit status for every checked profile alias.
 - Profile rate registry includes `soft_concurrency_gated` state for every checked profile alias.
 - Derived `profile_running_mode` is recorded (`single-user` or `multiple-users`).
@@ -407,6 +442,9 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Branch conflict in parallel worktrees:
   - Signal: checkout denied due branch already active elsewhere
   - Action: create role-suffixed fallback branch and continue; require worker to report mapping
+- Feature lane imbalance or churn:
+  - Signal: developers frequently reassigned across features without lane completion/blocker events
+  - Action: enforce sticky lane policy, log reassignment reason, and rebalance to distinct features when ready work exists
 - Missing lineage anchor:
   - Signal: packet dependency requires unmerged parent branch start but anchor commit is unknown
   - Action: stop task dispatch for that unit, rebuild lineage mapping from latest worker summaries/git refs, then retry dispatch
