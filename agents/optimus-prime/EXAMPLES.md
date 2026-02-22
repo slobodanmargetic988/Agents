@@ -170,3 +170,64 @@ dev-1 and dev-2 use codex-second; dev-3 uses codex-third; tester/reviewer use co
 Each thread-dispatch command uses the correct --codex-home path for the assigned slot profile.
 Cycle summaries display worker slot + Codex profile alias for active and idle threads.
 ```
+
+## Example 7: Single-Profile Rate Gate Wind-Down
+
+### Input
+```text
+Agent: optimus-prime
+Goal: Run normal orchestration but stop handing out new work when primary profile rates are low.
+Inputs: primary_mission: Complete ready tasks until rate policy requires wind-down.
+Inputs: task_source: Ready tasks in current sprint.
+Inputs: repo_root: ../Ouroboros
+Inputs: tracking_mode: automated-handoff
+Inputs: codex_profile_aliases: codex=default
+Inputs: worker_codex_profile_policy: role:developer=codex; role:tester=codex; role:reviewer=codex
+Inputs: rate_gate_5h_percent: 15
+Inputs: rate_gate_weekly_percent: 10
+Inputs: rate_reset_wait_max_hours: 4
+Inputs: status_check_interval_cycles: 1
+Inputs: status_check_on_start: true
+Inputs: status_primary_profile_alias: codex
+Constraints: Single-profile mode. If 5h or weekly limit is below gate, stop assigning new work. If only gated limit resets within 4h, sleep until reset and continue; otherwise wind down and stop after active workers finish.
+Output: rate-aware orchestration with wind-down or wait-and-resume behavior
+```
+
+### Expected Output
+```text
+Optimus runs codex-rate-snapshot for the primary codex profile at startup and every cycle.
+If a limit crosses configured gate, Optimus stops dispatching new work immediately.
+If reset is within 4h, Optimus sleeps until reset and resumes dispatch.
+If reset is farther than 4h, Optimus enters wind-down and stops after active workers complete.
+```
+
+## Example 8: Multi-User Profile Rate Gating (Selective Dispatch)
+
+### Input
+```text
+Agent: optimus-prime
+Goal: Continue dispatching on healthy secondary profiles even when primary profile is gated.
+Inputs: primary_mission: Complete as many ready tasks as possible under rate-aware multi-profile routing.
+Inputs: task_source: Ready tasks in current sprint.
+Inputs: repo_root: ../Ouroboros
+Inputs: tracking_mode: automated-handoff
+Inputs: codex_profile_aliases: codex=default, codex-second=$HOME/.codex-second, codex-third=$HOME/.codex-third
+Inputs: worker_codex_profile_policy: slot:dev-1=codex-second; slot:dev-2=codex-third; slot:test-1=codex-third; slot:review-1=codex
+Inputs: dispatch_codex_profile_mode: thread-dispatch-codex-home
+Inputs: rate_gate_5h_percent: 15
+Inputs: rate_gate_weekly_percent: 10
+Inputs: rate_reset_wait_max_hours: 4
+Inputs: status_check_interval_cycles: 1
+Inputs: status_check_on_start: true
+Inputs: status_primary_profile_alias: codex
+Constraints: Determine profile-running-mode from codex-rate-snapshot profile identity output (auth.json best effort). If accounts differ, treat as multiple-users and gate dispatch per profile, not globally.
+Output: profile-selective dispatch based on per-profile rate eligibility
+```
+
+### Expected Output
+```text
+Optimus runs codex-rate-snapshot for codex, codex-second, and codex-third and parses profile identities.
+If account identities differ, Optimus records profile-running-mode as multiple-users.
+When primary codex profile falls below rate gate, Optimus can still dispatch work to workers on codex-second/codex-third if they remain above gate.
+Optimus stops assigning work to any profile once that profile reaches gate and applies wait-or-wind-down when no eligible profiles remain.
+```

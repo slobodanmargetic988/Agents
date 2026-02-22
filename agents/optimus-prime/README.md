@@ -1,5 +1,5 @@
 # Optimus Prime Orchestrator Agent
-Last Updated: 2026-02-21 12:02 CET
+Last Updated: 2026-02-21 12:24 CET
 
 ## Mission
 Run long-lived sprint orchestration in deterministic cycles using `tracking_mode=automated-handoff`, where Optimus Prime owns planning, worker dispatch, and all Linear updates while workers execute token-lean unit prompts.
@@ -10,6 +10,13 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Initialize workstation slots with `workstation-preparation` skill before worker launch.
 - Maintain worker registry with fixed role + fixed thinking profile per thread (`medium` or `high`) and reuse threads in that mode.
 - Maintain fixed Codex profile assignment per worker thread (for example `codex`, `codex-second`, `codex-third`) unless user explicitly changes it.
+- Monitor rate limits for the primary profile and configured worker profiles by reading Codex session JSONL `token_count` events.
+- Detect profile-running mode (`single-user` vs `multiple-users`) from profile identity (preferred source: each profile `auth.json`; fallback: cached/session metadata if available).
+- Apply rate-gate behavior before dispatching new work:
+  - default thresholds: `5h <= 15%`, `weekly <= 10%`
+  - user-overridable thresholds supported
+- Enter wind-down mode when gated profiles should not receive more work.
+- Sleep-until-reset and resume when gated limit resets within configured wait window (default `4h`).
 - Keep at most `10` initialized workers and at most `6` running workers at once.
 - Apply developer scaling rule using ready task count:
   - `1-3` ready tasks -> `1` developer
@@ -69,12 +76,28 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
       - `role:developer=codex-second; role:tester=codex; role:reviewer=codex`
       - `slot:dev-1=codex-second; slot:dev-2=codex-second; slot:dev-3=codex-third; slot:test-1=codex-fourth; slot:review-1=codex-fourth`
   - `dispatch_codex_profile_mode` (default: `thread-dispatch-codex-home`)
+  - `rate_gate_5h_percent` (default: `15`)
+  - `rate_gate_weekly_percent` (default: `10`)
+  - `rate_reset_wait_max_hours` (default: `4`)
+  - `status_check_interval_cycles` (default: `1` = every cycle)
+  - `status_check_on_start` (default: `true`)
+  - `status_profiles_scope` (default: `all-configured-plus-primary`)
+  - `status_primary_profile_alias` (default: `codex`)
+  - `rate_snapshot_source` (default: `codex-rate-snapshot-skill`)
+  - `profile_identity_source` (default: `auth-json`)
+  - `profile_sessions_root_mode` (default: `under-codex-home`)
+  - `status_session_event_type` (default: `event_msg/token_count`)
+  - `rate_status_log_path` (default: `reports/optimus-prime/RATE_STATUS_LOG.jsonl`)
+  - `profile_rate_registry_path` (default: `reports/optimus-prime/PROFILE_RATE_REGISTRY.json`)
+  - `rate_gate_action_mode` (default: `wind-down-or-wait`)
+  - `status_account_parse_required` (default: `true`)
   - `developer_agent_path` (default: `agents/optimus-fullstack-developer/README.md`)
   - `tester_agent_path` (default: `agents/optimus-fullstack-tester/README.md`)
   - `reviewer_agent_path` (default: `agents/optimus-reviewer/README.md`)
 
 ## Tracking Mode: automated-handoff
 - Canonical state is Optimus-managed local orchestration files plus live worker-session status and branch lineage state.
+- Canonical state also includes profile rate-status registry for dispatch gating decisions.
 - Worker agents must not use the `linear` skill.
 - Worker agents should only use skills strictly required for their assigned unit of work.
 - Worker output contract is short summary only:
@@ -87,6 +110,30 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
   - handoff recommendation
 - Optimus Prime is the only agent allowed to update Linear statuses/comments.
 - Optimus Prime also owns worker Codex profile selection and dispatches workers with the configured profile using thread-dispatch (`--codex-home` or `CODEX_HOME=...`).
+- Optimus Prime owns rate-status checks for the primary and worker profiles and must gate dispatch based on configured thresholds.
+- Rate-source collection must use `codex-rate-snapshot` skill (which reads session JSONL `token_count` events, not the interactive `/status` TUI).
+- Rate parsing must capture, at minimum, from latest relevant `token_count` event per profile:
+  - 5h used/remaining percent and reset time (from primary window)
+  - weekly used/remaining percent and reset time (from secondary window)
+- Profile identity classification (`single-user` vs `multiple-users`) should use profile `auth.json` account/email when available.
+
+## Rate Management Model
+- Profile aliases:
+  - `codex` = primary/default profile (Optimus's own profile unless explicitly overridden)
+  - non-default aliases map to alternate `CODEX_HOME` paths
+- Profile-running mode (derived from parsed profile identity across profiles):
+  - `single-user`: all checked profiles report same account identity
+  - `multiple-users`: at least two checked profiles report different account identities
+- Rate gates (defaults, user-overridable):
+  - 5h gate: `<= 15%` remaining
+  - weekly gate: `<= 10%` remaining
+- Reset wait rule:
+  - if gated limit reset is within `rate_reset_wait_max_hours` (default `4h`), Optimus may sleep until reset and resume
+  - otherwise Optimus should wind down and stop after active workers finish
+- Dispatch gating behavior:
+  - single profile (default): any gate hit on primary profile -> stop issuing new work
+  - multi-profile `single-user`: treat rate pool as shared; any gate hit on the shared account -> stop issuing new work globally
+  - multi-profile `multiple-users`: gate dispatch per-profile; keep assigning work only to workers on profiles still above gate
 
 ## Primary Worker Agents
 - Developer worker:
@@ -99,6 +146,7 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 
 ## Skills
 - Required Skills:
+  - `codex-rate-snapshot` (read profile rate limits + identity from session JSONL/auth.json)
   - `thread-dispatch` (launch/monitor worker runs)
   - `sleep` (5-minute cycle control)
   - `workstation-preparation` (pre-create clean worker worktrees)
@@ -110,12 +158,14 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
   - `codex` alias means default profile (no override).
 - If Missing, Install From:
   - Repo skill definitions:
+    - `skills/codex-rate-snapshot/SKILL.md`
     - `skills/thread-dispatch/SKILL.md`
     - `skills/sleep/SKILL.md`
     - `skills/workstation-preparation/SKILL.md`
     - `skills/linear/SKILL.md`
     - `skills/playwright/SKILL.md`
   - Runtime skill locations:
+    - `$CODEX_HOME/skills/codex-rate-snapshot/SKILL.md`
     - `$CODEX_HOME/skills/thread-dispatch/SKILL.md`
     - `$CODEX_HOME/skills/sleep/SKILL.md`
     - `$CODEX_HOME/skills/workstation-preparation/SKILL.md`
@@ -123,7 +173,7 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
     - `$CODEX_HOME/skills/playwright/SKILL.md`
   - User note: copy missing skill folders from repo `skills/` into `$CODEX_HOME/skills/`.
 - Fallback Behavior If Skill Is Unavailable:
-  - Missing `thread-dispatch` or `workstation-preparation`: stop orchestration and request fix.
+  - Missing `codex-rate-snapshot`, `thread-dispatch`, or `workstation-preparation`: stop orchestration and request fix.
   - Missing `linear`: continue worker orchestration, queue pending Linear updates in `linear_sync_log_path`, and mark mission as partially synchronized.
   - Missing `sleep`: continue with manual cycle timing and log the deviation.
 - Restart Note:
@@ -159,6 +209,10 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
   - branch ancestry and anchor mapping for unmerged work (`task_identifier`, `branch`, `start_from_branch`, `start_from_commit`, `head_commit`, `parent_task_identifier`)
 - `reports/optimus-prime/prompts/`
   - generated worker prompt packets used for dispatch
+- `reports/optimus-prime/PROFILE_RATE_REGISTRY.json`
+  - current parsed rate snapshot per profile alias from session JSONL token_count events (`account`, `5h`, `weekly`, reset times, gated flags, eligibility`, source session path)
+- `reports/optimus-prime/RATE_STATUS_LOG.jsonl`
+  - timestamped rate snapshots and rate-gate decisions (`continue`, `wait_until_reset`, `wind_down`)
 
 ## Workflow
 1. Load mission scope and gather candidate tasks from `task_source`.
@@ -179,8 +233,29 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
      - role default (`role:developer=...`)
      - fallback `codex`
    - persist selected profile alias/home in worker registry and keep it stable for thread reuse
-6. Ensure workstation slots exist by running `workstation-preparation` for each needed slot.
-7. Initialize worker threads with fixed role + fixed thinking profile:
+6. Collect rate snapshots for primary profile and configured worker profiles (per `status_profiles_scope`):
+   - run on startup when `status_check_on_start=true`
+   - then every `status_check_interval_cycles`
+   - invoke `codex-rate-snapshot` skill once per check window with all configured profile aliases (`codex_profile_aliases`)
+   - pass current gate thresholds (`rate_gate_5h_percent`, `rate_gate_weekly_percent`, `rate_reset_wait_max_hours`)
+   - parse skill JSON output for:
+     - per-profile 5h/weekly used/remaining/reset fields
+     - per-profile eligibility and recommended action
+     - account identity (from `auth.json`, best effort)
+   - derive `profile_running_mode` (`single-user` or `multiple-users`)
+   - update `PROFILE_RATE_REGISTRY.json` and append `RATE_STATUS_LOG.jsonl`
+7. Evaluate rate gates before any new dispatch:
+   - single profile or `single-user` mode:
+     - if 5h or weekly rate is at/below gate, stop assigning new work globally
+     - if only gated limit resets within `rate_reset_wait_max_hours`, sleep until reset and resume
+     - otherwise enter wind-down mode and stop after active workers complete
+   - `multiple-users` mode:
+     - mark each profile alias dispatch-eligible or gated
+     - do not assign new work to workers on gated profiles
+     - continue assigning work to eligible profiles even if primary profile is gated
+     - if no eligible profiles remain, apply wait-until-reset (< window) or wind-down/stop
+8. Ensure workstation slots exist by running `workstation-preparation` for each needed slot.
+9. Initialize worker threads with fixed role + fixed thinking profile:
    - medium thinking for medium complexity work
    - high thinking for complex/high-risk work
    - worker definitions:
@@ -190,29 +265,32 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
    - worker Codex profile:
      - use slot/role profile assignment from policy
      - dispatch via thread-dispatch `--codex-home` when alias resolves to non-default home
-8. Record all initialized threads in `WORKER_REGISTRY.json` and mark run-state.
-9. Dispatch first developer unit packet and start cycle loop.
-10. At each cycle:
+10. Record all initialized threads in `WORKER_REGISTRY.json` and mark run-state.
+11. Dispatch first developer unit packet and start cycle loop.
+12. At each cycle:
    - ingest worker outputs and session health
-   - update `HANDOFF_LOG.jsonl`, `CYCLE_LOG.jsonl`, and `BRANCH_LINEAGE.json`
+   - update `HANDOFF_LOG.jsonl`, `CYCLE_LOG.jsonl`, `BRANCH_LINEAGE.json`, and profile-rate registry/logs as scheduled
    - sync Linear status/comments for completed unit outcomes (Optimus only)
+   - apply rate-gate decisions before dispatching any new unit
    - start tester only after first developer completion
    - start reviewer only after first tester completion
    - enforce fix/retest/review loop when tester or reviewer rejects work
    - keep one-task-at-a-time per developer until review pass
    - keep testers waiting on reviewer outcome for their active task
-11. Before sleep, post concise control update in orchestrator chat:
+13. Before sleep, post concise control update in orchestrator chat:
    - active workers
    - idle workers
    - task state per worker
    - worker Codex profile per slot (`codex`, `codex-second`, etc.)
+   - rate-gate state per checked profile (`eligible`, `gated`, `waiting-reset`, `wind-down`)
+   - derived `profile_running_mode` (`single-user` or `multiple-users`)
    - current branch lineage anchors for active tasks
    - blockers and planned next dispatch
    - close line: `jobs handed out going back to napping for a while`
-12. Sleep `5` minutes using `sleep` skill unless user steering is active.
-13. If user sends steering commands, skip sleep, apply steering, then resume cycle mode.
-14. Every few cycles, run identity checkpoint refresh from `IDENTITY_CHECKPOINT.md` and continue.
-15. End only when `primary_mission` completion criteria are fully satisfied.
+14. Sleep `5` minutes using `sleep` skill unless user steering is active or a shorter sleep-until-reset is required by rate logic.
+15. If user sends steering commands, skip sleep, apply steering, then resume cycle mode.
+16. Every few cycles, run identity checkpoint refresh from `IDENTITY_CHECKPOINT.md` and continue.
+17. End only when `primary_mission` completion criteria are fully satisfied or a rate-policy wind-down stop condition is reached.
 
 ## Constraints
 - `tracking_mode` must remain `automated-handoff` for worker operations.
@@ -227,6 +305,12 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Default dispatch target must be Optimus worker set (`optimus-fullstack-developer`, `optimus-fullstack-tester`, `optimus-reviewer`) unless user overrides it.
 - Worker Codex profile assignment must be deterministic and persisted per worker thread.
 - Do not silently move a running/reused worker thread to a different Codex profile unless user explicitly updates the profile policy.
+- Always treat primary/default `codex` profile as Optimus's own profile for rate checks.
+- Do not rely on interactive `/status` TUI scraping for automated rate gating.
+- Do not dispatch new work to a worker whose assigned profile is rate-gated.
+- In `single-user` mode, treat gate hit as global dispatch gate across all profiles.
+- In `multiple-users` mode, gate only the affected profiles and continue on eligible profiles.
+- If session token_count rate snapshot cannot be read/parsed for a profile, mark that profile non-eligible for new work until refreshed successfully.
 - For branch-on-branch tasks, starting point must reference the correct unmerged parent branch head commit from lineage registry.
 - If requested branch checkout fails because branch is active elsewhere, worker must create role-specific fallback branch (for example `MYO-23-make-menu-navbar-test`) and report it.
 - Do not declare task done until dev/test/review chain is complete.
@@ -235,6 +319,8 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Worker registry always respects role and concurrency caps.
 - Every running worker has one active packet and one assigned workstation.
 - Every initialized worker has resolved `codex_profile_alias` and `codex_home` (or explicit default profile marker).
+- Profile rate registry includes parsed profile identity and 5h/weekly limit status for every checked profile alias.
+- Derived `profile_running_mode` is recorded (`single-user` or `multiple-users`).
 - Every unit packet includes mission context, branch policy, acceptance target, and handoff contract.
 - Every unit packet includes valid start anchor fields and lineage parent when dependency is unmerged.
 - `BRANCH_LINEAGE.json` is updated after each worker completion/reassignment.
@@ -265,6 +351,17 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Invalid worker Codex profile assignment:
   - Signal: policy references unknown alias or alias path is unreadable
   - Action: stop worker dispatch for affected slot, report invalid alias/path, request corrected `codex_profile_aliases` or policy
+- Session rate snapshot unavailable or unparsable on primary profile:
+  - Signal: primary `codex` profile latest session JSONL/token_count event missing or missing required fields
+  - Action: enter conservative wind-down (no new dispatch) and retry rate snapshot before deciding to stop
+- Session rate snapshot unavailable or unparsable on secondary profile:
+  - Signal: secondary profile latest session JSONL/token_count event missing or missing required fields
+  - Action: mark that profile non-eligible for new dispatch, continue only on profiles with valid rate snapshots above gate
+- Rate gate hit (5h or weekly):
+  - Signal: remaining percent at/below configured threshold
+  - Action:
+    - if reset within `rate_reset_wait_max_hours`, sleep until reset and resume
+    - otherwise wind down and stop after active workers complete
 - Ambiguous priority conflict:
   - Signal: two ready tasks compete for same constrained worker type
   - Action: apply deterministic priority rule (severity, dependency depth, age), log tie-break decision
@@ -276,6 +373,7 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Linear status/comments are synchronized for all completed units (or explicitly queued with reason).
 - Branch lineage registry is complete and consistent for all units processed in mission scope.
 - Worker registry records stable Codex profile assignment for all initialized worker threads.
+- Rate-status registry/log records gate decisions and profile-running mode transitions.
 - Cycle and handoff logs provide complete traceability for the run.
 
 Usage examples live in `USAGE_TEMPLATE.md` in this folder.
