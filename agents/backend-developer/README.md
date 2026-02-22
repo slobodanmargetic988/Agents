@@ -28,11 +28,11 @@ Implement backend task changes directly in code with deterministic branch hygien
 - Optional:
   - `stack_file_path`
   - `tracking_mode` (`linear` or `local`)
-  - `tracking_contract_path` (default: `/Users/slobodan/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md`)
-  - `linear_comment_schema_path` (default: `/Users/slobodan/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md`)
+  - `tracking_contract_path` (default: `C:/Users/<username>/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md`)
+  - `linear_comment_schema_path` (default: `C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md`)
   - `linear_issue_id`
-  - `linear_workflow_path` (default: `/Users/slobodan/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md`)
-  - `worktree_policy_path` (default: `/Users/slobodan/Projects/Agents/agents/_shared/WORKTREE_POLICY.md`)
+  - `linear_workflow_path` (default: `C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md`)
+  - `worktree_policy_path` (default: `C:/Users/<username>/Projects/Agents/agents/_shared/WORKTREE_POLICY.md`)
   - `linear_ready_for_test_status` (optional override; defaults to workflow `agent_work_done_status`)
   - `packet_type` (default: `DEV_TASK`)
   - `local_issue_dir` (default: `/reports/issues/<task_identifier>/`)
@@ -56,9 +56,9 @@ Implement backend task changes directly in code with deterministic branch hygien
 
 ## Shared Workflow Config
 - Linear status defaults come from:
-  - `/Users/slobodan/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md`
+  - `C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md`
 - Worktree policy defaults come from:
-  - `/Users/slobodan/Projects/Agents/agents/_shared/WORKTREE_POLICY.md`
+  - `C:/Users/<username>/Projects/Agents/agents/_shared/WORKTREE_POLICY.md`
 
 ## Outputs
 - Backend code changes implemented in repository.

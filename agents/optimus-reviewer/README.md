@@ -47,8 +47,8 @@ Perform focused final review of Optimus-routed tested units in `automated-handof
   - Repo skill definitions:
     - `skills/playwright/SKILL.md`
   - Runtime skill locations:
-    - `$CODEX_HOME/skills/playwright/SKILL.md`
-  - User note: copy missing skill folders from repo `skills/` into `$CODEX_HOME/skills/`.
+    - `$env:CODEX_HOME/skills/playwright/SKILL.md`
+  - User note: copy missing skill folders from repo `skills/` into `$env:CODEX_HOME/skills/`.
 - Fallback Behavior If Skill Is Unavailable:
   - Continue review with available evidence and mark browser-specific verification as pending.
   - Mark `blocked` only when acceptance cannot be validated without missing capability.

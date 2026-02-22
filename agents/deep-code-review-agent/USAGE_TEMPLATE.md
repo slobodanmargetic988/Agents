@@ -10,10 +10,10 @@ Inputs: Repository root path:
 Inputs: Existing report path (required for Re-review): /reports/issues/<task_identifier>/REVIEW_TASKS.md
 Inputs: Optional focus modules or risk themes:
 Inputs: tracking_mode: linear
-Inputs: tracking_contract_path: /Users/slobodan/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md
-Inputs: linear_comment_schema_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
+Inputs: tracking_contract_path: C:/Users/<username>/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md
+Inputs: linear_comment_schema_path: C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
 Inputs: linear_issue_id:
-Inputs: linear_workflow_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md
+Inputs: linear_workflow_path: C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md
 Inputs: packet_type: REVIEW_TASK
 Inputs: local_issue_dir: /reports/issues/<task_identifier>/
 Inputs: local_state_path: /reports/issues/<task_identifier>/state.yaml
@@ -32,10 +32,10 @@ Inputs: Repository root path: ./repo/payments-platform
 Inputs: Existing report path (required for Re-review): /reports/issues/<task_identifier>/REVIEW_TASKS.md
 Inputs: Optional focus modules or risk themes: auth, transaction consistency, retry logic, PII handling
 Inputs: tracking_mode: linear
-Inputs: tracking_contract_path: /Users/slobodan/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md
-Inputs: linear_comment_schema_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
+Inputs: tracking_contract_path: C:/Users/<username>/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md
+Inputs: linear_comment_schema_path: C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
 Inputs: linear_issue_id: PAY-221
-Inputs: linear_workflow_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md
+Inputs: linear_workflow_path: C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md
 Inputs: packet_type: REVIEW_TASK
 Inputs: local_issue_dir: /workspace/payments-platform/reports/issues/PAY-221/
 Inputs: local_state_path: /workspace/payments-platform/reports/issues/PAY-221/state.yaml

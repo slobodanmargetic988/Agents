@@ -19,11 +19,12 @@ This folder stores portable skill definitions used by agents in this repository.
 - `workstation-preparation`
 
 ## Install To Codex Runtime
-For a missing skill `<skill-name>`, copy its folder into `$CODEX_HOME/skills/` (usually `~/.codex/skills/`):
+For a missing skill `<skill-name>`, copy its folder into `$env:CODEX_HOME/skills/` (usually `$env:USERPROFILE/.codex/skills/`):
 
-```bash
-mkdir -p "$CODEX_HOME/skills"
-cp -R <repo-root>/skills/<skill-name> "$CODEX_HOME/skills/<skill-name>"
+```powershell
+if (-not $env:CODEX_HOME) { $env:CODEX_HOME = "$env:USERPROFILE/.codex" }
+New-Item -ItemType Directory -Force -Path "$env:CODEX_HOME/skills" | Out-Null
+Copy-Item -Recurse -Force "<repo-root>/skills/<skill-name>" "$env:CODEX_HOME/skills/<skill-name>"
 ```
 
 For curated OpenAI skills, you can also use `skill-installer`.

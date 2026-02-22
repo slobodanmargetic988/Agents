@@ -6,52 +6,43 @@ When creating .codex-profile2, you can copy the whole .codex folder with a new n
 
 ## create the script
 
-mkdir -p ~/bin
-cat > ~/bin/switch-codex-profile <<'EOF'
-#!/bin/zsh
-set -euo pipefail
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE/bin" | Out-Null
+@'
+param(
+  [Parameter(Mandatory = $true)]
+  [string]$Profile
+)
 
-if [[ $# -ne 1 ]]; then
-  echo "Usage: switchCodex <profile-name>"
-  echo "Example: switchCodex slobodan"
-  echo "         switchCodex second"
+$Base = "$env:USERPROFILE/.codex"
+$SrcDir = "$env:USERPROFILE/.codex-$Profile"
+$SrcAuth = "$SrcDir/auth.json"
+$DstAuth = "$Base/auth.json"
+
+if (-not (Test-Path $Base -PathType Container)) {
+  Write-Error "Error: $Base does not exist"
   exit 1
-fi
+}
 
-PROFILE="$1"
-BASE="$HOME/.codex"
-SRC_DIR="$HOME/.codex-$PROFILE"
-SRC_AUTH="$SRC_DIR/auth.json"
-DST_AUTH="$BASE/auth.json"
-
-if [[ ! -d "$BASE" ]]; then
-  echo "Error: $BASE does not exist"
+if (-not (Test-Path $SrcAuth -PathType Leaf)) {
+  Write-Error "Error: $SrcAuth not found"
   exit 1
-fi
+}
 
-if [[ ! -f "$SRC_AUTH" ]]; then
-  echo "Error: $SRC_AUTH not found"
-  exit 1
-fi
+if (Test-Path $DstAuth -PathType Leaf) {
+  $timestamp = Get-Date -Format "yyyyMMddHHmmss"
+  Copy-Item -Force $DstAuth "$Base/auth.json.bak.$timestamp"
+}
 
-# Backup current auth.json if it exists
-if [[ -f "$DST_AUTH" ]]; then
-  cp -p "$DST_AUTH" "$BASE/auth.json.bak.$(date +%Y%m%d%H%M%S)"
-fi
+Copy-Item -Force $SrcAuth $DstAuth
 
-# Copy selected auth into ~/.codex
-cp -p "$SRC_AUTH" "$DST_AUTH"
-
-echo "Switched Codex auth to profile: $PROFILE"
-echo "Source: $SRC_AUTH"
-echo "Target: $DST_AUTH"
-EOF
+Write-Host "Switched Codex auth to profile: $Profile"
+Write-Host "Source: $SrcAuth"
+Write-Host "Target: $DstAuth"
+'@ | Set-Content -Encoding UTF8 "$env:USERPROFILE/bin/switch-codex-profile.ps1"
 
 
 ## make executable and use 
 
-chmod +x ~/bin/switch-codex-profile
-echo 'export PATH="$HOME/bin:$PATH"' >> ~/.zshrc
-echo 'alias switchCodex="switch-codex-profile"' >> ~/.zshrc
-source ~/.zshrc
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+Set-Alias switchCodex "$env:USERPROFILE/bin/switch-codex-profile.ps1"
 switchCodex profile2

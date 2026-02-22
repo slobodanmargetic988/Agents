@@ -284,13 +284,13 @@ When creating a new skill from scratch, always run the `init_skill.py` script. T
 
 Usage:
 
-```bash
+```powershell
 scripts/init_skill.py <skill-name> --path <output-directory> [--resources scripts,references,assets] [--examples]
 ```
 
 Examples:
 
-```bash
+```powershell
 scripts/init_skill.py my-skill --path skills/public
 scripts/init_skill.py my-skill --path skills/public --resources scripts,references
 scripts/init_skill.py my-skill --path skills/public --resources scripts --examples
@@ -308,7 +308,7 @@ After initialization, customize the SKILL.md and add resources as needed. If you
 
 Generate `display_name`, `short_description`, and `default_prompt` by reading the skill, then pass them as `--interface key=value` to `init_skill.py` or regenerate with:
 
-```bash
+```powershell
 scripts/generate_openai_yaml.py <path/to/skill-folder> --interface key=value
 ```
 
@@ -350,7 +350,7 @@ Write instructions for using the skill and its bundled resources.
 
 Once development of the skill is complete, validate the skill folder to catch basic issues early:
 
-```bash
+```powershell
 scripts/quick_validate.py <path/to/skill-folder>
 ```
 

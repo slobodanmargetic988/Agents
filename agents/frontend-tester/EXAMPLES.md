@@ -13,11 +13,11 @@ Inputs: Target URL/environment: https://staging.shop.example
 Inputs: Key user flows to validate: sign in, add to cart, checkout confirmation
 Inputs: Credentials or test account details: use qa_checkout_user from team vault
 Inputs: tracking_mode: linear
-Inputs: tracking_contract_path: /Users/slobodan/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md
-Inputs: linear_comment_schema_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
+Inputs: tracking_contract_path: C:/Users/<username>/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md
+Inputs: linear_comment_schema_path: C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
 Inputs: linear_issue_id: SHOP-301
-Inputs: linear_workflow_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md
-Inputs: worktree_policy_path: /Users/slobodan/Projects/Agents/agents/_shared/WORKTREE_POLICY.md
+Inputs: linear_workflow_path: C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md
+Inputs: worktree_policy_path: C:/Users/<username>/Projects/Agents/agents/_shared/WORKTREE_POLICY.md
 Inputs: linear_ready_statuses: Agent work DONE, Agent testing
 Inputs: packet_type: TEST_TASK
 Inputs: local_issue_dir: /workspace/shop-web/reports/issues/SHOP-301/
@@ -46,8 +46,8 @@ Inputs: Target URL/environment: https://staging.shop.example
 Inputs: Key user flows to validate: cart update, checkout submit, payment redirect
 Inputs: Credentials or test account details: use qa_checkout_user from team vault
 Inputs: tracking_mode: local
-Inputs: tracking_contract_path: /Users/slobodan/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md
-Inputs: linear_comment_schema_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
+Inputs: tracking_contract_path: C:/Users/<username>/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md
+Inputs: linear_comment_schema_path: C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
 Inputs: packet_type: TEST_TASK
 Inputs: local_issue_dir: /workspace/shop-web/reports/issues/SHOP-342/
 Inputs: local_state_path: /workspace/shop-web/reports/issues/SHOP-342/state.yaml

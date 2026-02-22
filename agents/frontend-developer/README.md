@@ -29,11 +29,11 @@ Implement frontend task changes directly with deterministic branch hygiene and s
   - `stack_file_path`
   - `design_source`
   - `tracking_mode` (`linear` or `local`)
-  - `tracking_contract_path` (default: `/Users/slobodan/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md`)
-  - `linear_comment_schema_path` (default: `/Users/slobodan/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md`)
+  - `tracking_contract_path` (default: `C:/Users/<username>/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md`)
+  - `linear_comment_schema_path` (default: `C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md`)
   - `linear_issue_id`
-  - `linear_workflow_path` (default: `/Users/slobodan/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md`)
-  - `worktree_policy_path` (default: `/Users/slobodan/Projects/Agents/agents/_shared/WORKTREE_POLICY.md`)
+  - `linear_workflow_path` (default: `C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md`)
+  - `worktree_policy_path` (default: `C:/Users/<username>/Projects/Agents/agents/_shared/WORKTREE_POLICY.md`)
   - `linear_ready_for_test_status` (optional override; defaults to workflow `agent_work_done_status`)
   - `packet_type` (default: `DEV_TASK`)
   - `local_issue_dir` (default: `/reports/issues/<task_identifier>/`)
@@ -58,9 +58,9 @@ Implement frontend task changes directly with deterministic branch hygiene and s
 
 ## Shared Workflow Config
 - Shared status defaults:
-  - `/Users/slobodan/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md`
+  - `C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md`
 - Shared worktree defaults:
-  - `/Users/slobodan/Projects/Agents/agents/_shared/WORKTREE_POLICY.md`
+  - `C:/Users/<username>/Projects/Agents/agents/_shared/WORKTREE_POLICY.md`
 
 ## Outputs
 - Frontend code changes implemented in repository.

@@ -8,8 +8,8 @@ Agent: sprint-orchestrator-agent
 Goal: Keep sprint execution moving overnight with background workers and 5-minute control cycles.
 Inputs: Sprint task source: Linear project "Ouroboros" issues MYO-45..MYO-70
 Inputs: tracking_mode: linear
-Inputs: dispatch_skill_path: /Users/slobodan/.codex/skills/thread-dispatch/SKILL.md
-Inputs: sleep_skill_path: /Users/slobodan/.codex/skills/sleep/SKILL.md
+Inputs: dispatch_skill_path: $env:USERPROFILE/.codex/skills/thread-dispatch/SKILL.md
+Inputs: sleep_skill_path: $env:USERPROFILE/.codex/skills/sleep/SKILL.md
 Inputs: poll_interval_minutes: 5
 Inputs: Developer scaling rule: ready=1-2 -> 1 dev, ready=3-10 -> 2 devs, ready>10 -> 3 devs
 Inputs: Worker slot policy: dedicated worktree per slot + per-task feature branch

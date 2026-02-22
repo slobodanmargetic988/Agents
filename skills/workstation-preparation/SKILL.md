@@ -23,7 +23,7 @@ The skill enforces:
 
 ## Script
 
-`/Users/slobodan/.codex/skills/workstation-preparation/scripts/prepare_workstation.py`
+`"$env:USERPROFILE/.codex/skills/workstation-preparation/scripts/prepare_workstation.py"`
 
 ## Inputs
 
@@ -37,34 +37,34 @@ Defaults:
 ## Usage
 
 ### Create or reset a slot
-```bash
-python3 /Users/slobodan/.codex/skills/workstation-preparation/scripts/prepare_workstation.py \
-  --repo-root /path/to/repo \
-  --worktree-name workstation-3 \
+```powershell
+python "$env:USERPROFILE/.codex/skills/workstation-preparation/scripts/prepare_workstation.py" `
+  --repo-root C:/path/to/repo `
+  --worktree-name workstation-3 `
   --branch-name workstation-3
 ```
 
 ### Auto-select next free standardized slot
-```bash
-python3 /Users/slobodan/.codex/skills/workstation-preparation/scripts/prepare_workstation.py \
-  --repo-root /path/to/repo
+```powershell
+python "$env:USERPROFILE/.codex/skills/workstation-preparation/scripts/prepare_workstation.py" `
+  --repo-root C:/path/to/repo
 ```
 
 ### Use explicit base ref
-```bash
-python3 /Users/slobodan/.codex/skills/workstation-preparation/scripts/prepare_workstation.py \
-  --repo-root /path/to/repo \
-  --worktree-name workstation-4 \
-  --branch-name workstation-4 \
+```powershell
+python "$env:USERPROFILE/.codex/skills/workstation-preparation/scripts/prepare_workstation.py" `
+  --repo-root C:/path/to/repo `
+  --worktree-name workstation-4 `
+  --branch-name workstation-4 `
   --base-ref origin/main
 ```
 
 ### Force reset existing slot (destructive cleanup)
-```bash
-python3 /Users/slobodan/.codex/skills/workstation-preparation/scripts/prepare_workstation.py \
-  --repo-root /path/to/repo \
-  --worktree-name workstation-2 \
-  --branch-name workstation-2 \
+```powershell
+python "$env:USERPROFILE/.codex/skills/workstation-preparation/scripts/prepare_workstation.py" `
+  --repo-root C:/path/to/repo `
+  --worktree-name workstation-2 `
+  --branch-name workstation-2 `
   --force-reset-existing
 ```
 

@@ -14,11 +14,11 @@ Inputs: default_branch: main
 Inputs: acceptance_criteria: Only approvers can approve; transitions are auditable; UI reflects final state.
 Inputs: stack_file_path: /workspace/billing-app/STACK.md
 Inputs: tracking_mode: linear
-Inputs: tracking_contract_path: /Users/slobodan/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md
-Inputs: linear_comment_schema_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
+Inputs: tracking_contract_path: C:/Users/<username>/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md
+Inputs: linear_comment_schema_path: C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
 Inputs: linear_issue_id: BILL-55
-Inputs: linear_workflow_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md
-Inputs: worktree_policy_path: /Users/slobodan/Projects/Agents/agents/_shared/WORKTREE_POLICY.md
+Inputs: linear_workflow_path: C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md
+Inputs: worktree_policy_path: C:/Users/<username>/Projects/Agents/agents/_shared/WORKTREE_POLICY.md
 Inputs: packet_type: DEV_TASK
 Inputs: tester_strategy: both
 Inputs: branch_name: codex/bill-55-approval-flow
@@ -46,8 +46,8 @@ Inputs: repo_root: /workspace/pricing-suite
 Inputs: default_branch: develop
 Inputs: acceptance_criteria: Rule engine computes expected totals and widget displays totals without layout regression.
 Inputs: tracking_mode: local
-Inputs: tracking_contract_path: /Users/slobodan/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md
-Inputs: linear_comment_schema_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
+Inputs: tracking_contract_path: C:/Users/<username>/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md
+Inputs: linear_comment_schema_path: C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
 Inputs: packet_type: DEV_TASK
 Inputs: local_issue_dir: /workspace/pricing-suite/reports/issues/PRC-90/
 Inputs: local_state_path: /workspace/pricing-suite/reports/issues/PRC-90/state.yaml

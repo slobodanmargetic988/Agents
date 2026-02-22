@@ -40,7 +40,7 @@ uv pip install openai
 ```
 If `uv` is unavailable:
 ```
-python3 -m pip install openai
+python -m pip install openai
 ```
 
 ## Environment

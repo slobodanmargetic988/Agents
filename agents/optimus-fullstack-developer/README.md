@@ -50,8 +50,8 @@ Implement assigned fullstack unit-of-work packets from Optimus Prime in `automat
   - Repo skill definitions:
     - `skills/playwright/SKILL.md`
   - Runtime skill locations:
-    - `$CODEX_HOME/skills/playwright/SKILL.md`
-  - User note: copy missing skill folders from repo `skills/` into `$CODEX_HOME/skills/`.
+    - `$env:CODEX_HOME/skills/playwright/SKILL.md`
+  - User note: copy missing skill folders from repo `skills/` into `$env:CODEX_HOME/skills/`.
 - Fallback Behavior If Skill Is Unavailable:
   - If optional skill is missing, continue with code-level validation and report the exact skipped verification.
   - Never block the whole unit for missing optional skill unless acceptance criteria explicitly require it.

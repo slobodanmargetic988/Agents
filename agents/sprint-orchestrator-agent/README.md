@@ -39,22 +39,22 @@ Run sprint orchestration end-to-end: publish deterministic role packets, start b
   - Standards source (`/agents/agent-making-agent/README.md`)
 - Optional:
   - `tracking_mode` (`linear` default, `local` fallback)
-  - `tracking_contract_path` (default: `/Users/slobodan/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md`)
-  - `linear_comment_schema_path` (default: `/Users/slobodan/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md`)
-  - `linear_workflow_path` (default: `/Users/slobodan/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md`)
-  - `worktree_policy_path` (default: `/Users/slobodan/Projects/Agents/agents/_shared/WORKTREE_POLICY.md`)
-  - `dispatch_skill_path` (default: `/Users/slobodan/.codex/skills/thread-dispatch/SKILL.md`)
-  - `sleep_skill_path` (default: `/Users/slobodan/.codex/skills/sleep/SKILL.md`)
+  - `tracking_contract_path` (default: `C:/Users/<username>/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md`)
+  - `linear_comment_schema_path` (default: `C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md`)
+  - `linear_workflow_path` (default: `C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md`)
+  - `worktree_policy_path` (default: `C:/Users/<username>/Projects/Agents/agents/_shared/WORKTREE_POLICY.md`)
+  - `dispatch_skill_path` (default: `$env:USERPROFILE/.codex/skills/thread-dispatch/SKILL.md`)
+  - `sleep_skill_path` (default: `$env:USERPROFILE/.codex/skills/sleep/SKILL.md`)
   - `poll_interval_minutes` (default: `5`)
   - `developer_max_workers` (default: `3`)
   - `review_required` (`false` default)
   - `merge_mode` (`sequential` default)
 
 ## Shared Workflow Config
-- `/Users/slobodan/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md`
-- `/Users/slobodan/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md`
-- `/Users/slobodan/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md`
-- `/Users/slobodan/Projects/Agents/agents/_shared/WORKTREE_POLICY.md`
+- `C:/Users/<username>/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md`
+- `C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md`
+- `C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md`
+- `C:/Users/<username>/Projects/Agents/agents/_shared/WORKTREE_POLICY.md`
 
 ## Worker Routing Model
 - Dedicated worker slots:
@@ -69,13 +69,13 @@ Run sprint orchestration end-to-end: publish deterministic role packets, start b
 
 ## Skill Usage (Required)
 - Thread dispatch skill:
-  - Read: `/Users/slobodan/.codex/skills/thread-dispatch/SKILL.md`
+  - Read: `$env:USERPROFILE/.codex/skills/thread-dispatch/SKILL.md`
   - Launch worker session with:
-    - `python3 /Users/slobodan/.codex/skills/thread-dispatch/scripts/dispatch_codex_run.py --cwd <worktree_path> --prompt-file <packet_prompt_file> --background`
+    - `python $env:USERPROFILE/.codex/skills/thread-dispatch/scripts/dispatch_codex_run.py --cwd <worktree_path> --prompt-file <packet_prompt_file> --background`
 - Sleep skill:
-  - Read: `/Users/slobodan/.codex/skills/sleep/SKILL.md`
+  - Read: `$env:USERPROFILE/.codex/skills/sleep/SKILL.md`
   - Sleep loop with:
-    - `python3 /Users/slobodan/.codex/skills/sleep/scripts/sleep_wait.py --for 5m`
+    - `python $env:USERPROFILE/.codex/skills/sleep/scripts/sleep_wait.py --for 5m`
 
 ## Outputs
 - `/reports/SPRINT_PLAN.md`

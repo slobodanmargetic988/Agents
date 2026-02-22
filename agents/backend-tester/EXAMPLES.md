@@ -16,11 +16,11 @@ Inputs: stack_file_path: /workspace/inventory-service/STACK.md
 Inputs: harness_mode: developer_handoff
 Inputs: extra_test_focus: contract
 Inputs: tracking_mode: linear
-Inputs: tracking_contract_path: /Users/slobodan/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md
-Inputs: linear_comment_schema_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
+Inputs: tracking_contract_path: C:/Users/<username>/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md
+Inputs: linear_comment_schema_path: C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
 Inputs: linear_issue_id: INV-118
-Inputs: linear_workflow_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md
-Inputs: worktree_policy_path: /Users/slobodan/Projects/Agents/agents/_shared/WORKTREE_POLICY.md
+Inputs: linear_workflow_path: C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md
+Inputs: worktree_policy_path: C:/Users/<username>/Projects/Agents/agents/_shared/WORKTREE_POLICY.md
 Inputs: packet_type: TEST_TASK
 Inputs: local_issue_dir: /workspace/inventory-service/reports/issues/INV-118/
 Inputs: local_state_path: /workspace/inventory-service/reports/issues/INV-118/state.yaml
@@ -52,8 +52,8 @@ Inputs: test_target: src/auth/token_service.*, tests/auth/token_service_spec.*
 Inputs: harness_mode: targeted
 Inputs: extra_test_focus: security-smoke
 Inputs: tracking_mode: local
-Inputs: tracking_contract_path: /Users/slobodan/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md
-Inputs: linear_comment_schema_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
+Inputs: tracking_contract_path: C:/Users/<username>/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md
+Inputs: linear_comment_schema_path: C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
 Inputs: packet_type: TEST_TASK
 Inputs: local_issue_dir: /workspace/auth-service/reports/issues/SEC-90/
 Inputs: local_state_path: /workspace/auth-service/reports/issues/SEC-90/state.yaml

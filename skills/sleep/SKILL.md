@@ -16,7 +16,7 @@ Supported wait modes:
 - Until mode: wait until a target time (`--until "2026-02-21 03:30:00"`, `--until "03:30"`)
 
 The script is:
-- `/Users/slobodan/.codex/skills/sleep/scripts/sleep_wait.py`
+- `$env:USERPROFILE/.codex/skills/sleep/scripts/sleep_wait.py`
 
 ## Prerequisites
 - Python 3.10+ (uses `zoneinfo`)
@@ -24,30 +24,30 @@ The script is:
 ## Usage
 
 ### Duration wait
-```bash
-python3 /Users/slobodan/.codex/skills/sleep/scripts/sleep_wait.py --for 30m
+```powershell
+python "$env:USERPROFILE/.codex/skills/sleep/scripts/sleep_wait.py" --for 30m
 ```
 
 ### Wait until local clock time
-```bash
-python3 /Users/slobodan/.codex/skills/sleep/scripts/sleep_wait.py --until "03:30"
+```powershell
+python "$env:USERPROFILE/.codex/skills/sleep/scripts/sleep_wait.py" --until "03:30"
 ```
 
 If clock time already passed today, it rolls to next day.
 
 ### Wait until explicit datetime with timezone
-```bash
-python3 /Users/slobodan/.codex/skills/sleep/scripts/sleep_wait.py --until "2026-02-21T03:30:00" --tz Europe/Belgrade
+```powershell
+python "$env:USERPROFILE/.codex/skills/sleep/scripts/sleep_wait.py" --until "2026-02-21T03:30:00" --tz Europe/Belgrade
 ```
 
 ### Dry run (compute only)
-```bash
-python3 /Users/slobodan/.codex/skills/sleep/scripts/sleep_wait.py --for 45m --dry-run
+```powershell
+python "$env:USERPROFILE/.codex/skills/sleep/scripts/sleep_wait.py" --for 45m --dry-run
 ```
 
 ### Safety cap
-```bash
-python3 /Users/slobodan/.codex/skills/sleep/scripts/sleep_wait.py --for 10h --max-seconds 14400
+```powershell
+python "$env:USERPROFILE/.codex/skills/sleep/scripts/sleep_wait.py" --for 10h --max-seconds 14400
 ```
 
 This exits with an error if computed wait is larger than 4 hours.
@@ -55,4 +55,3 @@ This exits with an error if computed wait is larger than 4 hours.
 ## Notes
 - Use this skill only when delay is intentional and explicitly requested.
 - Prefer `--dry-run` first in automation flows to verify computed timing.
-

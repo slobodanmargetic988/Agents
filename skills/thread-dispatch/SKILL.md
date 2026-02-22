@@ -20,11 +20,9 @@ It is best for long-running tasks or parallel work where the current thread shou
 ## Script
 
 - Preferred runtime path:
-  - `"$CODEX_HOME/skills/thread-dispatch/scripts/dispatch_codex_run.py"`
-  - `"$CODEX_HOME/skills/thread-dispatch/scripts/dispatch_codex_desktop_thread.py"`
+  - `"$env:CODEX_HOME/skills/thread-dispatch/scripts/dispatch_codex_run.py"`
 - Repo-local alternative (when running from this repo root):
   - `"./skills/thread-dispatch/scripts/dispatch_codex_run.py"`
-  - `"./skills/thread-dispatch/scripts/dispatch_codex_desktop_thread.py"`
 
 ## Inputs
 
@@ -32,7 +30,7 @@ It is best for long-running tasks or parallel work where the current thread shou
   - `cwd`
   - `prompt` or `prompt_file`
 - Optional:
-  - `codex_home` (custom `CODEX_HOME` path for spawned Codex process, e.g. `~/.codex-second`, `~/.codex-third`)
+  - `codex_home` (custom `CODEX_HOME` path for spawned Codex process, e.g. `$env:USERPROFILE/.codex-second`, `$env:USERPROFILE/.codex-third`)
   - `disable_all_mcp` (disable all MCP servers defined in target profile `config.toml`)
   - `enable_only_mcp` (repeatable; disable all configured MCP servers except the listed names)
   - `foreground` / `background`
@@ -45,50 +43,49 @@ It is best for long-running tasks or parallel work where the current thread shou
 
 Set script paths once (runtime-path preferred; repo-local fallback shown in comments):
 
-```bash
-DISPATCH_SCRIPT="$CODEX_HOME/skills/thread-dispatch/scripts/dispatch_codex_run.py"
-DESKTOP_SCRIPT="$CODEX_HOME/skills/thread-dispatch/scripts/dispatch_codex_desktop_thread.py"
-# DISPATCH_SCRIPT="./skills/thread-dispatch/scripts/dispatch_codex_run.py"
-# DESKTOP_SCRIPT="./skills/thread-dispatch/scripts/dispatch_codex_desktop_thread.py"
+```powershell
+if (-not $env:CODEX_HOME) { $env:CODEX_HOME = "$env:USERPROFILE/.codex" }
+$DISPATCH_SCRIPT = "$env:CODEX_HOME/skills/thread-dispatch/scripts/dispatch_codex_run.py"
+# $DISPATCH_SCRIPT = "./skills/thread-dispatch/scripts/dispatch_codex_run.py"
 ```
 
 ### 1) Dispatch with inline prompt (background)
 
-```bash
-python3 "$DISPATCH_SCRIPT" \
-  --cwd /Users/slobodan/Projects/Oroboros \
-  --prompt "Review open Linear blockers and write a concise summary." \
+```powershell
+python "$DISPATCH_SCRIPT" `
+  --cwd C:/Users/<username>/Projects/Oroboros `
+  --prompt "Review open Linear blockers and write a concise summary." `
   --background
 ```
 
 ### 2) Dispatch prompt from file (background)
 
-```bash
-python3 "$DISPATCH_SCRIPT" \
-  --cwd /Users/slobodan/Projects/Oroboros \
-  --prompt-file /Users/slobodan/Projects/Oroboros/tmp/worker_prompt.txt \
+```powershell
+python "$DISPATCH_SCRIPT" `
+  --cwd C:/Users/<username>/Projects/Oroboros `
+  --prompt-file C:/Users/<username>/Projects/Oroboros/tmp/worker_prompt.txt `
   --background
 ```
 
 ### 3) Foreground run (stream to current terminal)
 
-```bash
-python3 "$DISPATCH_SCRIPT" \
-  --cwd /Users/slobodan/Projects/Oroboros \
-  --prompt "Summarize test failures in backend logs." \
+```powershell
+python "$DISPATCH_SCRIPT" `
+  --cwd C:/Users/<username>/Projects/Oroboros `
+  --prompt "Summarize test failures in backend logs." `
   --foreground
 ```
 
-### 4) Use a different Codex profile (`CODEX_HOME`) via shell prefix
+### 4) Use a different Codex profile (`CODEX_HOME`) via PowerShell env var
 
 This is useful when you want parallel Codex setups with different skills/customization.
 Treat the profile path as a parameter (`codex_home`), not a fixed value.
 
-```bash
-CODEX_HOME="$HOME/.codex-<profile-name>" \
-python3 "$CODEX_HOME/skills/thread-dispatch/scripts/dispatch_codex_run.py" \
-  --cwd /Users/slobodan/Projects/Oroboros \
-  --prompt "Your prompt here" \
+```powershell
+$env:CODEX_HOME = "$env:USERPROFILE/.codex-<profile-name>"
+python "$env:CODEX_HOME/skills/thread-dispatch/scripts/dispatch_codex_run.py" `
+  --cwd C:/Users/<username>/Projects/Oroboros `
+  --prompt "Your prompt here" `
   --background
 ```
 
@@ -96,22 +93,22 @@ python3 "$CODEX_HOME/skills/thread-dispatch/scripts/dispatch_codex_run.py" \
 
 Equivalent to the shell-prefix approach above, but explicit in the script args.
 
-```bash
-python3 "$DISPATCH_SCRIPT" \
-  --cwd /Users/slobodan/Projects/Oroboros \
-  --prompt "Your prompt here" \
-  --background \
-  --codex-home "$HOME/.codex-<profile-name>"
+```powershell
+python "$DISPATCH_SCRIPT" `
+  --cwd C:/Users/<username>/Projects/Oroboros `
+  --prompt "Your prompt here" `
+  --background `
+  --codex-home "$env:USERPROFILE/.codex-<profile-name>"
 ```
 
 ### 6) Disable all MCP servers for spawned run (reads target profile `config.toml`)
 
-```bash
-python3 "$DISPATCH_SCRIPT" \
-  --cwd /Users/slobodan/Projects/Oroboros \
-  --prompt "Your prompt here" \
-  --background \
-  --codex-home "$HOME/.codex-second" \
+```powershell
+python "$DISPATCH_SCRIPT" `
+  --cwd C:/Users/<username>/Projects/Oroboros `
+  --prompt "Your prompt here" `
+  --background `
+  --codex-home "$env:USERPROFILE/.codex-second" `
   --disable-all-mcp
 ```
 
@@ -119,13 +116,13 @@ Equivalent spawned Codex command will include generated `-c 'mcp_servers.<name>.
 
 ### 7) Enable only specific MCP servers (disable all others)
 
-```bash
-python3 "$DISPATCH_SCRIPT" \
-  --cwd /Users/slobodan/Projects/Oroboros \
-  --prompt "Use Linear only for this task." \
-  --background \
-  --codex-home "$HOME/.codex-second" \
-  --enable-only-mcp linear \
+```powershell
+python "$DISPATCH_SCRIPT" `
+  --cwd C:/Users/<username>/Projects/Oroboros `
+  --prompt "Use Linear only for this task." `
+  --background `
+  --codex-home "$env:USERPROFILE/.codex-second" `
+  --enable-only-mcp linear `
   --enable-only-mcp linear_sse
 ```
 
@@ -135,7 +132,7 @@ python3 "$DISPATCH_SCRIPT" \
 - Detached runs write logs into `<cwd>/.codex-dispatch/`.
 - Use `--full-auto` by default. Add `--no-full-auto` to disable.
 - Use `--dry-run` to print the exact command without starting it.
-- The script inherits environment variables from the current shell, so `CODEX_HOME=...` prefixes are passed to the spawned `codex exec`.
+- The script inherits environment variables from the current shell, so `$env:CODEX_HOME` is passed to the spawned `codex exec`.
 - `--codex-home` is available when you want the skill command itself to set the spawned Codex profile explicitly.
 - `--disable-all-mcp` and `--enable-only-mcp` read the target profile's `config.toml` (under the effective `CODEX_HOME`) to discover configured MCP names, then generate `-c mcp_servers.<name>.enabled=false` overrides.
 - The MCP modes are mutually exclusive.
@@ -144,23 +141,7 @@ python3 "$DISPATCH_SCRIPT" \
 - When using this skill from another agent, pass `codex_home` as an explicit input/parameter when you want a non-default Codex profile.
 - When using this skill from another agent, pass MCP mode explicitly when you want low-overhead worker runs (for example disable all MCPs for simple coding/review tasks).
 
-## Visible Desktop Thread Mode (macOS)
+## Windows note
 
-To create a visible Codex Desktop chat thread:
-
-```bash
-python3 "$DESKTOP_SCRIPT" \
-  --prompt "just say good day back to me"
-```
-
-From file:
-
-```bash
-python3 "$DESKTOP_SCRIPT" \
-  --prompt-file /Users/slobodan/Projects/Oroboros/tmp/prompt.txt
-```
-
-Notes:
-- Requires macOS `osascript` and Accessibility permission for terminal/Codex automation.
-- Uses `Cmd+N`, paste clipboard, then Enter.
-- Use `--no-send` to open/paste without sending.
+Use `dispatch_codex_run.py` only.  
+The desktop-thread helper is macOS-only and not part of this Windows branch workflow.

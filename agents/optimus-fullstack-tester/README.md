@@ -47,8 +47,8 @@ Validate Optimus-assigned developer units in `automated-handoff` mode and return
   - Repo skill definitions:
     - `skills/playwright/SKILL.md`
   - Runtime skill locations:
-    - `$CODEX_HOME/skills/playwright/SKILL.md`
-  - User note: copy missing skill folders from repo `skills/` into `$CODEX_HOME/skills/`.
+    - `$env:CODEX_HOME/skills/playwright/SKILL.md`
+  - User note: copy missing skill folders from repo `skills/` into `$env:CODEX_HOME/skills/`.
 - Fallback Behavior If Skill Is Unavailable:
   - Continue with non-browser validation and report skipped browser verification explicitly.
   - Mark `blocked` only when acceptance criteria cannot be proven without missing skill.

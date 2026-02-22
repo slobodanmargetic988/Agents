@@ -30,8 +30,8 @@ Review candidate agents for quality, completeness, and safety against repository
   - `linear`: when converting review findings into tracked issues.
 - If Missing, Install From:
   - Repo skill definitions: `/skills/skill-creator/SKILL.md` and `/skills/linear/SKILL.md`
-  - Runtime skill locations: `$CODEX_HOME/skills/skill-creator/SKILL.md` and `$CODEX_HOME/skills/linear/SKILL.md`
-  - User note: copy skill folders from this repo's `/skills/` into `$CODEX_HOME/skills/` when needed.
+  - Runtime skill locations: `$env:CODEX_HOME/skills/skill-creator/SKILL.md` and `$env:CODEX_HOME/skills/linear/SKILL.md`
+  - User note: copy skill folders from this repo's `/skills/` into `$env:CODEX_HOME/skills/` when needed.
 - Fallback Behavior If Skill Is Unavailable:
   - Complete static file review and rubric scoring without external integrations.
   - Flag skipped skill-assisted checks explicitly in the output.
@@ -77,7 +77,7 @@ Review candidate agents for quality, completeness, and safety against repository
    - paths are portable (not machine-specific absolute paths)
 6. Validate README `Skills` section quality:
    - includes `Required Skills` and `Potentially Required Skills`
-   - includes `If Missing, Install From` with `/skills/...` and `$CODEX_HOME/skills/...`
+   - includes `If Missing, Install From` with `/skills/...` and `$env:CODEX_HOME/skills/...`
    - includes `Fallback Behavior If Skill Is Unavailable`
    - includes explicit restart note after skill installation
 7. If the agent depends on MCP-enabled tools, validate README `MCP` section quality:
@@ -129,7 +129,7 @@ Review candidate agents for quality, completeness, and safety against repository
   - `If Missing, Install From`
   - `Fallback Behavior If Skill Is Unavailable`
   - `Restart Note`
-- Confirm `If Missing, Install From` includes both repo `/skills/<skill-name>/SKILL.md` and runtime `$CODEX_HOME/skills/<skill-name>/SKILL.md` guidance.
+- Confirm `If Missing, Install From` includes both repo `/skills/<skill-name>/SKILL.md` and runtime `$env:CODEX_HOME/skills/<skill-name>/SKILL.md` guidance.
 - Confirm restart note explicitly tells users to restart Codex after installing skills.
 - For MCP-dependent agents, confirm README includes `MCP` section with:
   - `Required MCP Servers`

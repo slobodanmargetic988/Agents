@@ -1,147 +1,87 @@
 ---
 name: "playwright"
-description: "Use when the task requires automating a real browser from the terminal (navigation, form filling, snapshots, screenshots, data extraction, UI-flow debugging) via `playwright-cli` or the bundled wrapper script."
+description: "Use when the task requires automating a real browser from the terminal (navigation, form filling, snapshots, screenshots, data extraction, UI-flow debugging) via playwright-cli."
 ---
 
 
-# Playwright CLI Skill
+# Playwright CLI Skill (Windows)
 
-Drive a real browser from the terminal using `playwright-cli`. Prefer the bundled wrapper script so the CLI works even when it is not globally installed.
-Treat this skill as CLI-first automation. Do not pivot to `@playwright/test` unless the user explicitly asks for test files.
+Windows-first guide for browser automation from terminal.
 
-## Prerequisite check (required)
+## Prerequisite check
 
-Before proposing commands, check whether `npx` is available (the wrapper depends on it):
-
-```bash
-command -v npx >/dev/null 2>&1
+```powershell
+Get-Command npx -ErrorAction SilentlyContinue
 ```
 
-If it is not available, pause and ask the user to install Node.js/npm (which provides `npx`). Provide these steps verbatim:
+If `npx` is missing, install Node.js first.
 
-```bash
-# Verify Node/npm are installed
-node --version
-npm --version
+## One-time helper function (current shell)
 
-# If missing, install Node.js/npm, then:
-npm install -g @playwright/cli@latest
-playwright-cli --help
+```powershell
+function pwcli { npx --yes --package @playwright/cli playwright-cli @Args }
 ```
-
-Once `npx` is present, proceed with the wrapper script. A global install of `playwright-cli` is optional.
-
-## Skill path (set once)
-
-```bash
-export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
-export PWCLI="$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh"
-```
-
-User-scoped skills install under `$CODEX_HOME/skills` (default: `~/.codex/skills`).
 
 ## Quick start
 
-Use the wrapper script:
-
-```bash
-"$PWCLI" open https://playwright.dev --headed
-"$PWCLI" snapshot
-"$PWCLI" click e15
-"$PWCLI" type "Playwright"
-"$PWCLI" press Enter
-"$PWCLI" screenshot
+```powershell
+pwcli open https://playwright.dev --headed
+pwcli snapshot
+pwcli click e15
+pwcli type "Playwright"
+pwcli press Enter
+pwcli screenshot
 ```
 
-If the user prefers a global install, this is also valid:
+## Core loop
 
-```bash
-npm install -g @playwright/cli@latest
-playwright-cli --help
+1. Open page.
+2. Snapshot to get refs (`e1`, `e2`, ...).
+3. Interact.
+4. Snapshot again after UI changes or navigation.
+5. Save artifacts if needed.
+
+```powershell
+pwcli open https://example.com
+pwcli snapshot
+pwcli click e3
+pwcli snapshot
 ```
 
-## Core workflow
+## Patterns
 
-1. Open the page.
-2. Snapshot to get stable element refs.
-3. Interact using refs from the latest snapshot.
-4. Re-snapshot after navigation or significant DOM changes.
-5. Capture artifacts (screenshot, pdf, traces) when useful.
+### Form fill
 
-Minimal loop:
-
-```bash
-"$PWCLI" open https://example.com
-"$PWCLI" snapshot
-"$PWCLI" click e3
-"$PWCLI" snapshot
+```powershell
+pwcli open https://example.com/form
+pwcli snapshot
+pwcli fill e1 "user@example.com"
+pwcli fill e2 "password123"
+pwcli click e3
+pwcli snapshot
 ```
 
-## When to snapshot again
+### Trace a flaky flow
 
-Snapshot again after:
-
-- navigation
-- clicking elements that change the UI substantially
-- opening/closing modals or menus
-- tab switches
-
-Refs can go stale. When a command fails due to a missing ref, snapshot again.
-
-## Recommended patterns
-
-### Form fill and submit
-
-```bash
-"$PWCLI" open https://example.com/form
-"$PWCLI" snapshot
-"$PWCLI" fill e1 "user@example.com"
-"$PWCLI" fill e2 "password123"
-"$PWCLI" click e3
-"$PWCLI" snapshot
+```powershell
+pwcli open https://example.com --headed
+pwcli tracing-start
+# interactions
+pwcli tracing-stop
 ```
 
-### Debug a UI flow with traces
+### Multi-tab
 
-```bash
-"$PWCLI" open https://example.com --headed
-"$PWCLI" tracing-start
-# ...interactions...
-"$PWCLI" tracing-stop
+```powershell
+pwcli tab-new https://example.com
+pwcli tab-list
+pwcli tab-select 0
+pwcli snapshot
 ```
-
-### Multi-tab work
-
-```bash
-"$PWCLI" tab-new https://example.com
-"$PWCLI" tab-list
-"$PWCLI" tab-select 0
-"$PWCLI" snapshot
-```
-
-## Wrapper script
-
-The wrapper script uses `npx --package @playwright/cli playwright-cli` so the CLI can run without a global install:
-
-```bash
-"$PWCLI" --help
-```
-
-Prefer the wrapper unless the repository already standardizes on a global install.
-
-## References
-
-Open only what you need:
-
-- CLI command reference: `references/cli.md`
-- Practical workflows and troubleshooting: `references/workflows.md`
 
 ## Guardrails
 
-- Always snapshot before referencing element ids like `e12`.
-- Re-snapshot when refs seem stale.
-- Prefer explicit commands over `eval` and `run-code` unless needed.
-- When you do not have a fresh snapshot, use placeholder refs like `eX` and say why; do not bypass refs with `run-code`.
-- Use `--headed` when a visual check will help.
-- When capturing artifacts in this repo, use `output/playwright/` and avoid introducing new top-level artifact folders.
-- Default to CLI commands and workflows, not Playwright test specs.
+- Always snapshot before using element refs.
+- Re-snapshot after navigation or major DOM changes.
+- Prefer explicit commands; avoid `eval` unless necessary.
+- For artifacts in this repo, use `output/playwright/`.

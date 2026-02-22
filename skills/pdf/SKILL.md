@@ -33,15 +33,12 @@ uv pip install reportlab pdfplumber pypdf
 ```
 If `uv` is unavailable:
 ```
-python3 -m pip install reportlab pdfplumber pypdf
+python -m pip install reportlab pdfplumber pypdf
 ```
 System tools (for rendering):
 ```
-# macOS (Homebrew)
-brew install poppler
-
-# Ubuntu/Debian
-sudo apt-get install -y poppler-utils
+# Windows (winget)
+winget install oschwartz10612.Poppler
 ```
 
 If installation isn't possible in this environment, tell the user which dependency is missing and how to install it locally.

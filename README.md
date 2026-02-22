@@ -58,15 +58,15 @@ See `/agents/agent-making-agent/README.md` for the full checklist.
 ## Getting Started
 
 1. Initialize git:
-   ```bash
+   ```powershell
    git init
    ```
 2. Add files:
-   ```bash
+   ```powershell
    git add .
    ```
 3. Create first commit:
-   ```bash
+   ```powershell
    git commit -m "Initialize agents documentation repository"
    ```
 
@@ -81,11 +81,11 @@ See `/agents/agent-making-agent/README.md` for the full checklist.
 
 If you use Linear, keep workflow statuses in one place:
 
-- `/Users/slobodan/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md`
+- `C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md`
 
 Agents that synchronize Linear state should receive:
 
-- `Inputs: linear_workflow_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md`
+- `Inputs: linear_workflow_path: C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md`
 
 Update that single file when your Linear status names change (for example `Agent work DONE`, `Agent testing`, `Agent test DONE`), then rerun agents without editing each agent definition.
 
@@ -93,11 +93,11 @@ Update that single file when your Linear status names change (for example `Agent
 
 If you run agents in parallel worktrees, keep worktree behavior in one place:
 
-- `/Users/slobodan/Projects/Agents/agents/_shared/WORKTREE_POLICY.md`
+- `C:/Users/<username>/Projects/Agents/agents/_shared/WORKTREE_POLICY.md`
 
 Agents should receive:
 
-- `Inputs: worktree_policy_path: /Users/slobodan/Projects/Agents/agents/_shared/WORKTREE_POLICY.md`
+- `Inputs: worktree_policy_path: C:/Users/<username>/Projects/Agents/agents/_shared/WORKTREE_POLICY.md`
 
 Default behavior:
 - Never create a new worktree without explicit user permission.

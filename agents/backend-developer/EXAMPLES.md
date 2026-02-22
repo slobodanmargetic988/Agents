@@ -14,11 +14,11 @@ Inputs: default_branch: main
 Inputs: acceptance_criteria: Endpoint supports page/pageSize/status and keeps backward compatibility.
 Inputs: stack_file_path: /workspace/ledger-api/STACK.md
 Inputs: tracking_mode: linear
-Inputs: tracking_contract_path: /Users/slobodan/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md
-Inputs: linear_comment_schema_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
+Inputs: tracking_contract_path: C:/Users/<username>/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md
+Inputs: linear_comment_schema_path: C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
 Inputs: linear_issue_id: LED-312
-Inputs: linear_workflow_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md
-Inputs: worktree_policy_path: /Users/slobodan/Projects/Agents/agents/_shared/WORKTREE_POLICY.md
+Inputs: linear_workflow_path: C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md
+Inputs: worktree_policy_path: C:/Users/<username>/Projects/Agents/agents/_shared/WORKTREE_POLICY.md
 Inputs: packet_type: DEV_TASK
 Inputs: branch_name: codex/led-312-transactions-pagination
 Inputs: commit_mode: commit
@@ -45,8 +45,8 @@ Inputs: repo_root: /workspace/auth-service
 Inputs: default_branch: develop
 Inputs: acceptance_criteria: Login and refresh endpoints enforce per-IP and per-account limits.
 Inputs: tracking_mode: local
-Inputs: tracking_contract_path: /Users/slobodan/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md
-Inputs: linear_comment_schema_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
+Inputs: tracking_contract_path: C:/Users/<username>/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md
+Inputs: linear_comment_schema_path: C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
 Inputs: packet_type: DEV_TASK
 Inputs: local_issue_dir: /workspace/auth-service/reports/issues/SEC-77/
 Inputs: local_state_path: /workspace/auth-service/reports/issues/SEC-77/state.yaml

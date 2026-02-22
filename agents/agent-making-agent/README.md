@@ -35,8 +35,8 @@ Define and enforce a minimum quality standard for every new agent in this reposi
   - `skill-installer`: when documenting exact install flows for missing skills.
 - If Missing, Install From:
   - Repo skill definitions: `/skills/skill-creator/SKILL.md` and `/skills/skill-installer/SKILL.md`
-  - Runtime skill locations: `$CODEX_HOME/skills/skill-creator/SKILL.md` and `$CODEX_HOME/skills/skill-installer/SKILL.md`
-  - User note: copy skill folders from this repo's `/skills/` into `$CODEX_HOME/skills/` when needed.
+  - Runtime skill locations: `$env:CODEX_HOME/skills/skill-creator/SKILL.md` and `$env:CODEX_HOME/skills/skill-installer/SKILL.md`
+  - User note: copy skill folders from this repo's `/skills/` into `$env:CODEX_HOME/skills/` when needed.
 - Fallback Behavior If Skill Is Unavailable:
   - Continue generating agent files from standards in this README.
   - Mark skill-dependent recommendations as optional follow-up actions.
@@ -107,7 +107,7 @@ Define and enforce a minimum quality standard for every new agent in this reposi
   - Must avoid external asset dependencies that can break portability.
 - README `Skills` section rules:
   - Must include `Required Skills`, `Potentially Required Skills`, `If Missing, Install From`, `Fallback Behavior If Skill Is Unavailable`, and `Restart Note`.
-  - `If Missing, Install From` must reference repo-local skill paths (for example `/skills/<skill-name>/SKILL.md`) and runtime paths under `$CODEX_HOME/skills/`.
+  - `If Missing, Install From` must reference repo-local skill paths (for example `/skills/<skill-name>/SKILL.md`) and runtime paths under `$env:CODEX_HOME/skills/`.
   - `Restart Note` must explicitly tell users to restart Codex after installing a skill.
 - README `MCP` section rules (required only if agent behavior depends on MCP):
   - Must include `Required MCP Servers`, `Potentially Required MCP Servers`, `If Missing, Setup From`, `Fallback Behavior If MCP Is Unavailable`, and `Restart Note`.
@@ -215,7 +215,7 @@ An agent fails regardless of score if any item below is false:
 - [ ] `USER_GUIDE.html` is visually polished and mobile responsive
 - [ ] `USER_GUIDE.html` avoids brittle external asset dependencies
 - [ ] README contains `Skills` section with required/potential/install/fallback/restart subsections
-- [ ] Skills install guidance includes repo `/skills/` and runtime `$CODEX_HOME/skills/` paths
+- [ ] Skills install guidance includes repo `/skills/` and runtime `$env:CODEX_HOME/skills/` paths
 - [ ] Skills section includes explicit Codex restart note after skill install
 - [ ] MCP-dependent agents include README `MCP` section with required/potential/setup/fallback/restart subsections
 - [ ] MCP setup guidance references repo `/mcp/` docs and config template

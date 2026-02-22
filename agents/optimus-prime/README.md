@@ -195,13 +195,13 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
     - `skills/linear/SKILL.md`
     - `skills/playwright/SKILL.md`
   - Runtime skill locations:
-    - `$CODEX_HOME/skills/codex-rate-snapshot/SKILL.md`
-    - `$CODEX_HOME/skills/thread-dispatch/SKILL.md`
-    - `$CODEX_HOME/skills/sleep/SKILL.md`
-    - `$CODEX_HOME/skills/workstation-preparation/SKILL.md`
-    - `$CODEX_HOME/skills/linear/SKILL.md`
-    - `$CODEX_HOME/skills/playwright/SKILL.md`
-  - User note: copy missing skill folders from repo `skills/` into `$CODEX_HOME/skills/`.
+    - `$env:CODEX_HOME/skills/codex-rate-snapshot/SKILL.md`
+    - `$env:CODEX_HOME/skills/thread-dispatch/SKILL.md`
+    - `$env:CODEX_HOME/skills/sleep/SKILL.md`
+    - `$env:CODEX_HOME/skills/workstation-preparation/SKILL.md`
+    - `$env:CODEX_HOME/skills/linear/SKILL.md`
+    - `$env:CODEX_HOME/skills/playwright/SKILL.md`
+  - User note: copy missing skill folders from repo `skills/` into `$env:CODEX_HOME/skills/`.
 - Fallback Behavior If Skill Is Unavailable:
   - Missing `codex-rate-snapshot`, `thread-dispatch`, or `workstation-preparation`: stop orchestration and request fix.
   - Missing `linear`: continue worker orchestration, queue pending Linear updates in `linear_sync_log_path`, and mark mission as partially synchronized.

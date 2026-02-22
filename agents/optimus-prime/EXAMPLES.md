@@ -17,7 +17,7 @@ Inputs: max_initialized_workers: 10
 Inputs: max_running_workers: 6
 Inputs: branch_lineage_path: reports/optimus-prime/BRANCH_LINEAGE.json
 Inputs: packet_require_start_point: true
-Inputs: codex_profile_aliases: codex=default, codex-second=$HOME/.codex-second
+Inputs: codex_profile_aliases: codex=default, codex-second=$env:USERPROFILE/.codex-second
 Inputs: worker_codex_profile_policy: role:developer=codex-second; role:tester=codex; role:reviewer=codex
 Inputs: dispatch_codex_profile_mode: thread-dispatch-codex-home
 Inputs: developer_agent_path: agents/optimus-fullstack-developer/README.md
@@ -50,7 +50,7 @@ Inputs: repo_root: ../Ouroboros
 Inputs: tracking_mode: automated-handoff
 Inputs: branch_lineage_path: reports/optimus-prime/BRANCH_LINEAGE.json
 Inputs: packet_require_start_point: true
-Inputs: codex_profile_aliases: codex=default, codex-second=$HOME/.codex-second
+Inputs: codex_profile_aliases: codex=default, codex-second=$env:USERPROFILE/.codex-second
 Inputs: worker_codex_profile_policy: role:developer=codex-second; role:tester=codex; role:reviewer=codex
 Inputs: developer_agent_path: agents/optimus-fullstack-developer/README.md
 Inputs: tester_agent_path: agents/optimus-fullstack-tester/README.md
@@ -79,7 +79,7 @@ Inputs: repo_root: ../Ouroboros
 Inputs: tracking_mode: automated-handoff
 Inputs: branch_lineage_path: reports/optimus-prime/BRANCH_LINEAGE.json
 Inputs: packet_require_start_point: true
-Inputs: codex_profile_aliases: codex=default, codex-second=$HOME/.codex-second, codex-third=$HOME/.codex-third, codex-fourth=$HOME/.codex-fourth
+Inputs: codex_profile_aliases: codex=default, codex-second=$env:USERPROFILE/.codex-second, codex-third=$env:USERPROFILE/.codex-third, codex-fourth=$env:USERPROFILE/.codex-fourth
 Inputs: worker_codex_profile_policy: slot:dev-1=codex-second; slot:dev-2=codex-second; slot:dev-3=codex-third; slot:test-1=codex-fourth; slot:review-1=codex-fourth
 Inputs: dispatch_codex_profile_mode: thread-dispatch-codex-home
 Inputs: developer_agent_path: agents/optimus-fullstack-developer/README.md
@@ -131,7 +131,7 @@ Inputs: primary_mission: Complete 10 ready tasks.
 Inputs: task_source: Ready tasks in current sprint.
 Inputs: repo_root: ../Ouroboros
 Inputs: tracking_mode: automated-handoff
-Inputs: codex_profile_aliases: codex=default, codex-second=$HOME/.codex-second
+Inputs: codex_profile_aliases: codex=default, codex-second=$env:USERPROFILE/.codex-second
 Inputs: worker_codex_profile_policy: role:developer=codex-second; role:tester=codex; role:reviewer=codex
 Inputs: dispatch_codex_profile_mode: thread-dispatch-codex-home
 Constraints: Keep worker thread profile assignment stable after initialization.
@@ -141,7 +141,7 @@ Output: background worker dispatch using role-based Codex profiles
 ### Expected Output
 ```text
 Optimus assigns all developer slots to codex-second and tester/reviewer slots to default codex.
-Thread-dispatch invocations for developers include --codex-home $HOME/.codex-second.
+Thread-dispatch invocations for developers include --codex-home $env:USERPROFILE/.codex-second.
 Tester and reviewer dispatches use default profile with no codex_home override.
 Worker registry records codex profile alias per initialized worker thread.
 ```
@@ -156,7 +156,7 @@ Inputs: primary_mission: Complete 20 ready tasks.
 Inputs: task_source: Ready tasks in current sprint.
 Inputs: repo_root: ../Ouroboros
 Inputs: tracking_mode: automated-handoff
-Inputs: codex_profile_aliases: codex=default, codex-second=$HOME/.codex-second, codex-third=$HOME/.codex-third, codex-fourth=$HOME/.codex-fourth
+Inputs: codex_profile_aliases: codex=default, codex-second=$env:USERPROFILE/.codex-second, codex-third=$env:USERPROFILE/.codex-third, codex-fourth=$env:USERPROFILE/.codex-fourth
 Inputs: worker_codex_profile_policy: slot:dev-1=codex-second; slot:dev-2=codex-second; slot:dev-3=codex-third; slot:test-1=codex-fourth; slot:review-1=codex-fourth
 Inputs: dispatch_codex_profile_mode: thread-dispatch-codex-home
 Constraints: Keep slot profile stable for thread reuse across cycles.
@@ -217,7 +217,7 @@ Inputs: primary_mission: Complete as many ready tasks as possible under rate-awa
 Inputs: task_source: Ready tasks in current sprint.
 Inputs: repo_root: ../Ouroboros
 Inputs: tracking_mode: automated-handoff
-Inputs: codex_profile_aliases: codex=default, codex-second=$HOME/.codex-second, codex-third=$HOME/.codex-third
+Inputs: codex_profile_aliases: codex=default, codex-second=$env:USERPROFILE/.codex-second, codex-third=$env:USERPROFILE/.codex-third
 Inputs: worker_codex_profile_policy: slot:dev-1=codex-second; slot:dev-2=codex-third; slot:test-1=codex-third; slot:review-1=codex
 Inputs: dispatch_codex_profile_mode: thread-dispatch-codex-home
 Inputs: dispatch_worker_mcp_mode: thread-dispatch-disable-all-by-default

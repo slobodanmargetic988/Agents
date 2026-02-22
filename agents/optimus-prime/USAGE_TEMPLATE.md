@@ -73,7 +73,7 @@ Inputs: linear_sync_log_path: reports/optimus-prime/LINEAR_SYNC_LOG.jsonl
 Inputs: identity_checkpoint_path: reports/optimus-prime/IDENTITY_CHECKPOINT.md
 Inputs: branch_lineage_path: reports/optimus-prime/BRANCH_LINEAGE.json
 Inputs: packet_require_start_point: true
-Inputs: codex_profile_aliases: codex=default, codex-second=$HOME/.codex-second, codex-third=$HOME/.codex-third, codex-fourth=$HOME/.codex-fourth
+Inputs: codex_profile_aliases: codex=default, codex-second=$env:USERPROFILE/.codex-second, codex-third=$env:USERPROFILE/.codex-third, codex-fourth=$env:USERPROFILE/.codex-fourth
 Inputs: worker_codex_profile_policy: role:developer=codex-second; role:tester=codex; role:reviewer=codex
 Inputs: dispatch_codex_profile_mode: thread-dispatch-codex-home
 Inputs: dispatch_worker_mcp_mode: thread-dispatch-disable-all-by-default

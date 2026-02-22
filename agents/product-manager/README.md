@@ -77,8 +77,8 @@ tasks:
   - `thread-dispatch`: when project uncertainty is high and delegated deep review/testing tasks are needed.
 - If Missing, Install From:
   - Repo skill definitions: `/skills/linear/SKILL.md`, `/skills/thread-dispatch/SKILL.md`
-  - Runtime skill locations: `$CODEX_HOME/skills/linear/SKILL.md`, `$CODEX_HOME/skills/thread-dispatch/SKILL.md`
-  - If needed, copy from repo `/skills/` into runtime `$CODEX_HOME/skills/`.
+  - Runtime skill locations: `$env:CODEX_HOME/skills/linear/SKILL.md`, `$env:CODEX_HOME/skills/thread-dispatch/SKILL.md`
+  - If needed, copy from repo `/skills/` into runtime `$env:CODEX_HOME/skills/`.
 - Fallback Behavior If Skill Is Unavailable:
   - Continue with manual planning flow in chat.
   - Emit task-ready backlog content in Markdown for manual import into Linear/local tracker.

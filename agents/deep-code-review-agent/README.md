@@ -33,10 +33,10 @@ Perform deep read-only code reviews and produce prioritized remediation tasks wi
   - Focus areas (modules/risk themes)
   - Time budget/depth constraints
   - `tracking_mode` (`linear` or `local`)
-  - `tracking_contract_path` (default: `/Users/slobodan/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md`)
-  - `linear_comment_schema_path` (default: `/Users/slobodan/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md`)
+  - `tracking_contract_path` (default: `C:/Users/<username>/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md`)
+  - `linear_comment_schema_path` (default: `C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md`)
   - `linear_issue_id`
-  - `linear_workflow_path` (default: `/Users/slobodan/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md`)
+  - `linear_workflow_path` (default: `C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md`)
   - `packet_type` (default: `REVIEW_TASK`)
   - `local_issue_dir` (default: `/reports/issues/<task_identifier>/`)
   - `local_state_path` (default: `<local_issue_dir>/state.yaml`)

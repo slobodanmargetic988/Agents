@@ -46,7 +46,7 @@ uv pip install openpyxl pandas
 ```
 If `uv` is unavailable:
 ```
-python3 -m pip install openpyxl pandas
+python -m pip install openpyxl pandas
 ```
 Optional (chart-heavy or PDF review workflows):
 ```
@@ -54,15 +54,13 @@ uv pip install matplotlib
 ```
 If `uv` is unavailable:
 ```
-python3 -m pip install matplotlib
+python -m pip install matplotlib
 ```
 System tools (for rendering):
 ```
-# macOS (Homebrew)
-brew install libreoffice poppler
-
-# Ubuntu/Debian
-sudo apt-get install -y libreoffice poppler-utils
+# Windows (winget)
+winget install TheDocumentFoundation.LibreOffice
+winget install oschwartz10612.Poppler
 ```
 
 If installation isn't possible in this environment, tell the user which dependency is missing and how to install it locally.

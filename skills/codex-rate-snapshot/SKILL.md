@@ -23,13 +23,13 @@ This is intended for orchestrators (for example `optimus-prime`) to make dispatc
 
 ## Script
 
-`/Users/slobodan/.codex/skills/codex-rate-snapshot/scripts/read_codex_rate_snapshots.py`
+`"$env:USERPROFILE/.codex/skills/codex-rate-snapshot/scripts/read_codex_rate_snapshots.py"`
 
 ## Inputs
 
 - `--profile alias=PATH_OR_DEFAULT` (repeatable)
-  - `default` means the active default profile (`$CODEX_HOME` if set, otherwise `~/.codex`)
-  - examples: `codex=default`, `codex-second=$HOME/.codex-second`
+  - `default` means the active default profile (`$CODEX_HOME` if set, otherwise `$env:USERPROFILE/.codex`)
+  - examples: `codex=default`, `codex-second=$env:USERPROFILE/.codex-second`
 - `--gate-5h-percent` (optional, default `15`)
 - `--gate-weekly-percent` (optional, default `10`)
 - `--soft-gate-5h-percent` (optional, default `40`)
@@ -41,23 +41,23 @@ This is intended for orchestrators (for example `optimus-prime`) to make dispatc
 ## Usage
 
 ### Single profile (default Codex home)
-```bash
-python3 /Users/slobodan/.codex/skills/codex-rate-snapshot/scripts/read_codex_rate_snapshots.py \
+```powershell
+python "$env:USERPROFILE/.codex/skills/codex-rate-snapshot/scripts/read_codex_rate_snapshots.py" `
   --profile codex=default
 ```
 
 ### Multiple profiles with custom gates
-```bash
-python3 /Users/slobodan/.codex/skills/codex-rate-snapshot/scripts/read_codex_rate_snapshots.py \
-  --profile codex=default \
-  --profile codex-second=$HOME/.codex-second \
-  --profile codex-third=$HOME/.codex-third \
-  --gate-5h-percent 15 \
-  --gate-weekly-percent 10 \
-  --soft-gate-5h-percent 40 \
-  --soft-gate-weekly-percent 25 \
-  --soft-max-active-workers 3 \
-  --wait-max-hours 4 \
+```powershell
+python "$env:USERPROFILE/.codex/skills/codex-rate-snapshot/scripts/read_codex_rate_snapshots.py" `
+  --profile codex=default `
+  --profile codex-second=$env:USERPROFILE/.codex-second `
+  --profile codex-third=$env:USERPROFILE/.codex-third `
+  --gate-5h-percent 15 `
+  --gate-weekly-percent 10 `
+  --soft-gate-5h-percent 40 `
+  --soft-gate-weekly-percent 25 `
+  --soft-max-active-workers 3 `
+  --wait-max-hours 4 `
   --json-pretty
 ```
 

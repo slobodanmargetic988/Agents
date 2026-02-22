@@ -14,10 +14,10 @@ Inputs: Repository root path: ./repo/commerce-monorepo
 Inputs: Existing report path (required for Re-review): /reports/issues/<task_identifier>/REVIEW_TASKS.md
 Inputs: Optional focus modules or risk themes: checkout, inventory sync, shared auth middleware
 Inputs: tracking_mode: linear
-Inputs: tracking_contract_path: /Users/slobodan/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md
-Inputs: linear_comment_schema_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
+Inputs: tracking_contract_path: C:/Users/<username>/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md
+Inputs: linear_comment_schema_path: C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
 Inputs: linear_issue_id: COM-900
-Inputs: linear_workflow_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md
+Inputs: linear_workflow_path: C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md
 Inputs: packet_type: REVIEW_TASK
 Inputs: local_issue_dir: /workspace/commerce-monorepo/reports/issues/COM-900/
 Inputs: local_state_path: /workspace/commerce-monorepo/reports/issues/COM-900/state.yaml
@@ -46,8 +46,8 @@ Inputs: Repository root path: ./repo/commerce-monorepo
 Inputs: Existing report path (required for Re-review): /reports/issues/<task_identifier>/REVIEW_TASKS.md
 Inputs: Optional focus modules or risk themes: resolved tasks in checkout + auth
 Inputs: tracking_mode: local
-Inputs: tracking_contract_path: /Users/slobodan/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md
-Inputs: linear_comment_schema_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
+Inputs: tracking_contract_path: C:/Users/<username>/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md
+Inputs: linear_comment_schema_path: C:/Users/<username>/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
 Inputs: packet_type: REVIEW_TASK
 Inputs: local_issue_dir: /workspace/commerce-monorepo/reports/issues/COM-900/
 Inputs: local_state_path: /workspace/commerce-monorepo/reports/issues/COM-900/state.yaml
