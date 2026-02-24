@@ -31,6 +31,7 @@ class RunSpec:
     name: str
     cmd: str
     required: bool
+    timeout_sec: float | None = None
 
 
 @dataclass
@@ -50,6 +51,7 @@ class RunnerInput:
     db_precheck: DbPrecheck
     stop_on_blocked: bool
     dry_run: bool
+    timeout_sec: float | None
 
 
 @dataclass
@@ -60,14 +62,16 @@ class RunResult:
     exit_code: int | None
     duration_ms: int
     summary: str
+    snippet: str
     signature: str | None
     blocker_class: str | None
     rerun_cmd: str
+    timeout_sec: float | None
 
 
 class CommandRunner:
-    def run(self, cmd: list[str], cwd: Path, env: dict[str, str]) -> subprocess.CompletedProcess[str]:
-        return subprocess.run(cmd, cwd=str(cwd), env=env, capture_output=True, text=True, check=False)
+    def run(self, cmd: list[str], cwd: Path, env: dict[str, str], timeout: float | None = None) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(cmd, cwd=str(cwd), env=env, capture_output=True, text=True, check=False, timeout=timeout)
 
 
 def as_bool(value: Any, default: bool = False) -> bool:
@@ -118,7 +122,16 @@ def parse_runs(data: dict[str, Any]) -> list[RunSpec]:
         if not isinstance(cmd, str) or not cmd.strip():
             raise ToolError("input_error", f"runs[{idx}].cmd must be non-empty string", stage="input")
         required = as_bool(item.get("required", True), default=True)
-        runs.append(RunSpec(name=name.strip(), cmd=cmd.strip(), required=required))
+        timeout_raw = item.get("timeout_sec")
+        timeout_sec: float | None = None
+        if timeout_raw is not None:
+            try:
+                timeout_sec = float(timeout_raw)
+            except (TypeError, ValueError) as exc:
+                raise ToolError("input_error", f"runs[{idx}].timeout_sec must be numeric", stage="input") from exc
+            if timeout_sec <= 0:
+                raise ToolError("input_error", f"runs[{idx}].timeout_sec must be > 0", stage="input")
+        runs.append(RunSpec(name=name.strip(), cmd=cmd.strip(), required=required, timeout_sec=timeout_sec))
     return runs
 
 
@@ -152,6 +165,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--worktree-root")
     parser.add_argument("--env-source")
     parser.add_argument("--python-bin")
+    parser.add_argument("--timeout-sec", type=float)
     parser.add_argument("--stop-on-blocked", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--json-pretty", action="store_true")
@@ -175,6 +189,16 @@ def parse_input(args: argparse.Namespace) -> RunnerInput:
     if not python_bin.is_absolute():
         python_bin = (worktree_root / python_bin).resolve()
 
+    timeout_raw = payload.get("timeout_sec", args.timeout_sec)
+    timeout_sec: float | None = None
+    if timeout_raw is not None:
+        try:
+            timeout_sec = float(timeout_raw)
+        except (TypeError, ValueError) as exc:
+            raise ToolError("input_error", "timeout_sec must be numeric", stage="input") from exc
+        if timeout_sec <= 0:
+            raise ToolError("input_error", "timeout_sec must be > 0", stage="input")
+
     return RunnerInput(
         worktree_root=worktree_root,
         task_identifier=must_str(payload, "task_identifier", fallback=args.task_identifier),
@@ -184,6 +208,7 @@ def parse_input(args: argparse.Namespace) -> RunnerInput:
         db_precheck=parse_db_precheck(payload),
         stop_on_blocked=as_bool(payload.get("stop_on_blocked", args.stop_on_blocked), default=False),
         dry_run=as_bool(payload.get("dry_run", args.dry_run), default=False),
+        timeout_sec=timeout_sec,
     )
 
 
@@ -327,7 +352,9 @@ def execute(cfg: RunnerInput, runner: CommandRunner | None = None) -> dict[str, 
                     "exit_code": 0,
                     "duration_ms": 0,
                     "summary": f"DRY-RUN: {run.cmd}",
+                    "snippet": f"DRY-RUN: {run.cmd}",
                     "signature": None,
+                    "timeout_sec": run.timeout_sec if run.timeout_sec is not None else cfg.timeout_sec,
                 }
                 for run in cfg.runs
             ],
@@ -407,9 +434,11 @@ def execute(cfg: RunnerInput, runner: CommandRunner | None = None) -> dict[str, 
                     exit_code=None,
                     duration_ms=0,
                     summary=exc.message,
+                    snippet=exc.message,
                     signature="missing_env",
                     blocker_class="missing_env",
                     rerun_cmd=spec.cmd,
+                    timeout_sec=spec.timeout_sec if spec.timeout_sec is not None else cfg.timeout_sec,
                 )
             )
             if cfg.stop_on_blocked:
@@ -419,7 +448,32 @@ def execute(cfg: RunnerInput, runner: CommandRunner | None = None) -> dict[str, 
 
         start = time.monotonic()
         try:
-            proc = runner.run(cmd, cwd=cfg.worktree_root, env=env)
+            effective_timeout = spec.timeout_sec if spec.timeout_sec is not None else cfg.timeout_sec
+            proc = runner.run(cmd, cwd=cfg.worktree_root, env=env, timeout=effective_timeout)
+        except subprocess.TimeoutExpired:
+            duration_ms = int((time.monotonic() - start) * 1000)
+            summary = f"timeout after {effective_timeout}s" if effective_timeout else "timeout"
+            snippet = summary
+            run_results.append(
+                RunResult(
+                    name=spec.name,
+                    required=spec.required,
+                    result="blocked",
+                    exit_code=None,
+                    duration_ms=duration_ms,
+                    summary=summary,
+                    snippet=snippet,
+                    signature="timeout",
+                    blocker_class="test_failure",
+                    rerun_cmd=shlex.join(cmd),
+                    timeout_sec=effective_timeout,
+                )
+            )
+            host_rerun_commands.append(shlex.join(cmd))
+            if cfg.stop_on_blocked:
+                warnings.append({"code": "stop_on_blocked_triggered", "message": f"Stopped at run '{spec.name}'"})
+                break
+            continue
         except OSError as exc:
             duration_ms = int((time.monotonic() - start) * 1000)
             summary = f"Execution error: {exc}"
@@ -431,9 +485,11 @@ def execute(cfg: RunnerInput, runner: CommandRunner | None = None) -> dict[str, 
                     exit_code=None,
                     duration_ms=duration_ms,
                     summary=summary,
+                    snippet=summary,
                     signature="missing_env",
                     blocker_class="missing_env",
                     rerun_cmd=shlex.join(cmd),
+                    timeout_sec=spec.timeout_sec if spec.timeout_sec is not None else cfg.timeout_sec,
                 )
             )
             host_rerun_commands.append(shlex.join(cmd))
@@ -455,9 +511,11 @@ def execute(cfg: RunnerInput, runner: CommandRunner | None = None) -> dict[str, 
                 exit_code=0,
                 duration_ms=duration_ms,
                 summary=summary,
+                snippet=snippet,
                 signature=None,
                 blocker_class=None,
                 rerun_cmd=rerun_cmd,
+                timeout_sec=spec.timeout_sec if spec.timeout_sec is not None else cfg.timeout_sec,
             )
         else:
             run_result, signature, blocker_class = classify_failure(snippet)
@@ -468,9 +526,11 @@ def execute(cfg: RunnerInput, runner: CommandRunner | None = None) -> dict[str, 
                 exit_code=int(proc.returncode),
                 duration_ms=duration_ms,
                 summary=summary,
+                snippet=snippet,
                 signature=signature,
                 blocker_class=blocker_class if run_result == "blocked" else None,
                 rerun_cmd=rerun_cmd,
+                timeout_sec=spec.timeout_sec if spec.timeout_sec is not None else cfg.timeout_sec,
             )
             if run_result == "blocked":
                 host_rerun_commands.append(rerun_cmd)
@@ -497,7 +557,9 @@ def execute(cfg: RunnerInput, runner: CommandRunner | None = None) -> dict[str, 
                 "exit_code": item.exit_code,
                 "duration_ms": item.duration_ms,
                 "summary": item.summary,
+                "snippet": item.snippet,
                 "signature": item.signature,
+                "timeout_sec": item.timeout_sec,
             }
             for item in run_results
         ],

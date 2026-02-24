@@ -62,6 +62,7 @@ def build_cfg(root: Path, **overrides):
         db_precheck=overrides.get("db_precheck", MODULE.DbPrecheck(enabled=False, host="127.0.0.1", port=5432)),
         stop_on_blocked=overrides.get("stop_on_blocked", False),
         dry_run=overrides.get("dry_run", False),
+        timeout_sec=overrides.get("timeout_sec", None),
     )
 
 
@@ -74,8 +75,8 @@ class TesterTargetedPytestRunnerTests(unittest.TestCase):
         self.assertEqual((fail, sig2, cls2), ("fail", "test_failure", "test_failure"))
 
         runs = [
-            MODULE.RunResult("a", True, "pass", 0, 1, "", None, None, "cmd"),
-            MODULE.RunResult("b", True, "fail", 1, 1, "", "test_failure", None, "cmd"),
+            MODULE.RunResult("a", True, "pass", 0, 1, "", "", None, None, "cmd", None),
+            MODULE.RunResult("b", True, "fail", 1, 1, "", "", "test_failure", None, "cmd", None),
         ]
         decision, blocker = MODULE.derive_decision(runs, None)
         self.assertEqual(decision, "needs_dev_fix")
@@ -122,6 +123,31 @@ class TesterTargetedPytestRunnerTests(unittest.TestCase):
             self.assertEqual(out["blocker_class"], "db_unreachable")
             self.assertEqual(out["runs"], [])
 
+    def test_timeout_run_classifies_blocked(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            env_path = make_env(root)
+            pybin = Path(sys.executable)
+            cfg = build_cfg(
+                root,
+                env_source=env_path,
+                python_bin=pybin,
+                runs=[
+                    MODULE.RunSpec(
+                        name="timeout_case",
+                        cmd="python -c \"import time; time.sleep(0.2)\"",
+                        required=True,
+                        timeout_sec=0.01,
+                    )
+                ],
+                timeout_sec=0.05,
+            )
+            out = MODULE.execute(cfg)
+            self.assertFalse(out["ok"])
+            self.assertEqual(out["decision_hint"], "blocked")
+            self.assertEqual(out["runs"][0]["result"], "blocked")
+            self.assertEqual(out["runs"][0]["signature"], "timeout")
+
     def test_contract_shape(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -139,7 +165,7 @@ class TesterTargetedPytestRunnerTests(unittest.TestCase):
                 "errors",
             }
             self.assertTrue(required.issubset(set(out.keys())))
-            run_required = {"name", "result", "exit_code", "duration_ms", "summary", "signature"}
+            run_required = {"name", "result", "exit_code", "duration_ms", "summary", "snippet", "signature", "timeout_sec"}
             self.assertTrue(run_required.issubset(set(out["runs"][0].keys())))
 
 

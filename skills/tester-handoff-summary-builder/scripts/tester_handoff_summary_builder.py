@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import Any
 
 TOOL = "tester-handoff-summary-builder"
+TOOL_VERSION = "0.1.0"
+SCHEMA_VERSION = "1.0"
 DECISION_VALUES = {"ready_for_review", "needs_dev_fix", "blocked"}
 
 
@@ -35,6 +37,7 @@ class BuilderInput:
     findings: list[str]
     blockers: list[str]
     dry_run: bool
+    include_metadata: bool
 
 
 def load_json(path: str) -> dict[str, Any]:
@@ -103,6 +106,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--preflight-json-path")
     parser.add_argument("--test-results-json-path")
     parser.add_argument("--decision-override")
+    parser.add_argument("--include-metadata", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--json-pretty", action="store_true")
     return parser.parse_args()
@@ -135,6 +139,7 @@ def parse_input(args: argparse.Namespace) -> BuilderInput:
         findings=parse_list_str(payload, "findings"),
         blockers=parse_list_str(payload, "blockers"),
         dry_run=as_bool(payload.get("dry_run", args.dry_run), default=False),
+        include_metadata=as_bool(payload.get("include_metadata", args.include_metadata), default=False),
     )
 
 
@@ -188,6 +193,7 @@ def test_run_checks(data: dict[str, Any]) -> tuple[list[dict[str, str]], str | N
         decision_hint = None
 
     runs = data.get("runs", [])
+    had_run_entries = False
     if isinstance(runs, list):
         for idx, item in enumerate(runs):
             if not isinstance(item, dict):
@@ -198,6 +204,7 @@ def test_run_checks(data: dict[str, Any]) -> tuple[list[dict[str, str]], str | N
                 raise ToolError("data", f"test_results.runs[{idx}].name must be non-empty string", stage="input")
             if not isinstance(result, str) or not result.strip():
                 raise ToolError("data", f"test_results.runs[{idx}].result must be non-empty string", stage="input")
+            had_run_entries = True
             checks.append({"name": name.strip(), "result": result.strip()})
 
             summary = item.get("summary")
@@ -220,6 +227,9 @@ def test_run_checks(data: dict[str, Any]) -> tuple[list[dict[str, str]], str | N
                 message = item.get("message")
                 if isinstance(code, str) and isinstance(message, str):
                     blockers.append(f"test:{code}: {message}")
+
+    if not had_run_entries and blockers:
+        checks.append({"name": "test_runner", "result": "blocked"})
 
     return checks, decision_hint, findings, blockers
 
@@ -271,7 +281,7 @@ def build_summary(cfg: BuilderInput) -> dict[str, Any]:
     if merged_blockers and decision == "ready_for_review":
         decision = "blocked"
 
-    out = {
+    out: dict[str, Any] = {
         "task_identifier": cfg.task_identifier,
         "branch": cfg.resolved_branch,
         "start_from_branch": cfg.start_from_branch,
@@ -282,6 +292,13 @@ def build_summary(cfg: BuilderInput) -> dict[str, Any]:
         "findings": dedupe(merged_findings),
         "blockers": dedupe(merged_blockers),
     }
+    if cfg.include_metadata:
+        out = {
+            "schema_version": SCHEMA_VERSION,
+            "tool": TOOL,
+            "tool_version": TOOL_VERSION,
+            **out,
+        }
     return out
 
 

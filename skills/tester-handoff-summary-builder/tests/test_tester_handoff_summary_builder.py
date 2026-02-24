@@ -26,6 +26,7 @@ def make_cfg(root: Path, **overrides):
         findings=overrides.get("findings", []),
         blockers=overrides.get("blockers", []),
         dry_run=overrides.get("dry_run", False),
+        include_metadata=overrides.get("include_metadata", False),
     )
 
 
@@ -113,6 +114,33 @@ class TesterHandoffSummaryBuilderTests(unittest.TestCase):
                 "blockers",
             ]
             self.assertEqual(list(out.keys()), expected_order)
+
+    def test_synthesized_test_runner_blocked_check_when_only_errors(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            preflight = root / "preflight.json"
+            test_results = root / "test-results.json"
+            preflight.write_text(json.dumps({"ok": True, "next_step": "run_tests", "errors": []}), encoding="utf-8")
+            test_results.write_text(
+                json.dumps(
+                    {
+                        "ok": False,
+                        "decision_hint": "blocked",
+                        "runs": [],
+                        "errors": [{"code": "db_unreachable", "message": "db down"}],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            out = MODULE.build_summary(make_cfg(root, preflight_json_path=preflight, test_results_json_path=test_results))
+            self.assertTrue(any(c["name"] == "test_runner" and c["result"] == "blocked" for c in out["checks"]))
+
+    def test_include_metadata_envelope(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            out = MODULE.build_summary(make_cfg(root, dry_run=True, include_metadata=True))
+            self.assertEqual(out["tool"], "tester-handoff-summary-builder")
+            self.assertEqual(out["schema_version"], "1.0")
 
 
 if __name__ == "__main__":

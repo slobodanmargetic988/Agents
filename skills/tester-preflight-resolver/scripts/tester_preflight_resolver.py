@@ -170,12 +170,13 @@ def create_branch_from_anchor(cfg: PreflightInput, runner: CommandRunner, branch
     return git(runner, cfg.worktree_root, "checkout", "-b", branch_name, cfg.start_from_commit)
 
 
-def resolve_branch(cfg: PreflightInput, runner: CommandRunner) -> tuple[str, bool, list[dict[str, Any]]]:
+def resolve_branch(cfg: PreflightInput, runner: CommandRunner) -> tuple[str, bool, bool, bool, list[dict[str, Any]]]:
     warnings: list[dict[str, Any]] = []
+    assigned_exists = branch_exists(cfg, runner, cfg.branch_name)
 
     checkout = checkout_existing_branch(cfg, runner, cfg.branch_name)
     if checkout.returncode == 0:
-        return cfg.branch_name, False, warnings
+        return cfg.branch_name, False, assigned_exists, False, warnings
 
     combined = f"{checkout.stdout}\n{checkout.stderr}".strip()
     if not cfg.allow_fallback:
@@ -195,7 +196,9 @@ def resolve_branch(cfg: PreflightInput, runner: CommandRunner) -> tuple[str, boo
         }
     )
 
-    if branch_exists(cfg, runner, fallback):
+    fallback_exists = branch_exists(cfg, runner, fallback)
+    fallback_created = not fallback_exists
+    if fallback_exists:
         fallback_checkout = checkout_existing_branch(cfg, runner, fallback)
     else:
         fallback_checkout = create_branch_from_anchor(cfg, runner, fallback)
@@ -204,7 +207,7 @@ def resolve_branch(cfg: PreflightInput, runner: CommandRunner) -> tuple[str, boo
         combined_fallback = f"{fallback_checkout.stdout}\n{fallback_checkout.stderr}".strip()
         raise ToolError("fallback_checkout_failed", f"Failed to checkout fallback branch '{fallback}': {combined_fallback}", stage="checkout")
 
-    return fallback, True, warnings
+    return fallback, True, assigned_exists, fallback_created, warnings
 
 
 def current_head(cfg: PreflightInput, runner: CommandRunner) -> str:
@@ -242,8 +245,11 @@ def execute(cfg: PreflightInput, runner: CommandRunner | None = None) -> dict[st
         return {
             "ok": True,
             "tool": TOOL,
+            "intended_branch": cfg.branch_name,
             "resolved_branch": cfg.branch_name,
             "fallback_used": False,
+            "branch_exists": None,
+            "fallback_created": False,
             "resolved_head_commit": "DRY_RUN_HEAD",
             "lineage_ok": True,
             "head_matches_target": True,
@@ -254,7 +260,7 @@ def execute(cfg: PreflightInput, runner: CommandRunner | None = None) -> dict[st
 
     try:
         ensure_git_context(cfg, runner)
-        resolved_branch, used_fallback, resolve_warnings = resolve_branch(cfg, runner)
+        resolved_branch, used_fallback, assigned_exists, fallback_created, resolve_warnings = resolve_branch(cfg, runner)
         warnings.extend(resolve_warnings)
 
         head_commit = current_head(cfg, runner)
@@ -283,8 +289,11 @@ def execute(cfg: PreflightInput, runner: CommandRunner | None = None) -> dict[st
         return {
             "ok": ok,
             "tool": TOOL,
+            "intended_branch": cfg.branch_name,
             "resolved_branch": resolved_branch,
             "fallback_used": used_fallback,
+            "branch_exists": assigned_exists,
+            "fallback_created": fallback_created,
             "resolved_head_commit": head_commit,
             "lineage_ok": lineage,
             "head_matches_target": head_match,
@@ -298,8 +307,11 @@ def execute(cfg: PreflightInput, runner: CommandRunner | None = None) -> dict[st
         return {
             "ok": False,
             "tool": TOOL,
+            "intended_branch": cfg.branch_name,
             "resolved_branch": "",
             "fallback_used": False,
+            "branch_exists": False,
+            "fallback_created": False,
             "resolved_head_commit": "",
             "lineage_ok": False,
             "head_matches_target": False,

@@ -85,8 +85,11 @@ class TesterPreflightResolverTests(unittest.TestCase):
             )
             out = MODULE.execute(cfg)
             self.assertTrue(out["ok"])
+            self.assertEqual(out["intended_branch"], "codex/dev-2/myo-166")
             self.assertEqual(out["resolved_branch"], "codex/dev-2/myo-166")
             self.assertFalse(out["fallback_used"])
+            self.assertTrue(out["branch_exists"])
+            self.assertFalse(out["fallback_created"])
             self.assertEqual(out["next_step"], "run_tests")
 
     def test_integration_branch_locked_fallback_path(self):
@@ -115,8 +118,11 @@ class TesterPreflightResolverTests(unittest.TestCase):
             )
             out = MODULE.execute(cfg)
             self.assertTrue(out["ok"])
+            self.assertEqual(out["intended_branch"], "codex/dev-2/myo-166")
             self.assertEqual(out["resolved_branch"], "codex/dev-2/myo-166-test")
             self.assertTrue(out["fallback_used"])
+            self.assertTrue(out["branch_exists"])
+            self.assertTrue(out["fallback_created"])
             self.assertEqual(out["next_step"], "run_tests")
             warning_codes = {w["code"] for w in out["warnings"]}
             self.assertIn("fallback_used", warning_codes)
