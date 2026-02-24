@@ -564,6 +564,41 @@ def build_text_summary(snapshot: dict[str, Any]) -> str:
     )
 
 
+def build_status_text(snapshot: dict[str, Any]) -> str:
+    generated_at = snapshot.get("generated_at") or "unknown"
+    lines = [f"Current worker status ({generated_at} UTC):", ""]
+
+    active_workers: list[dict[str, Any]] = []
+    lines.append("slot | status | task | thread-id")
+    for worker in snapshot.get("workers", []):
+        slot = worker.get("slot") or "-"
+        state = worker.get("state") or "-"
+        task = worker.get("active_task") or "-"
+        session_id = worker.get("session_id") or "-"
+        lines.append(f"{slot} | {state} | {task} | {session_id}")
+
+        if state == "running":
+            active_workers.append(worker)
+
+    lines.append("")
+    if not active_workers:
+        lines.append("No active workers right now.")
+    elif len(active_workers) == 1:
+        worker = active_workers[0]
+        slot = worker.get("slot") or "-"
+        task = worker.get("active_task") or "-"
+        session_id = worker.get("session_id") or "-"
+        lines.append(f"Only active worker right now is {slot} on {task} (thread-id {session_id}).")
+    else:
+        formatted = [
+            f"{w.get('slot', '-')} on {w.get('active_task') or '-'} (thread-id {w.get('session_id') or '-'})"
+            for w in active_workers
+        ]
+        lines.append("Active workers right now: " + ", ".join(formatted) + ".")
+
+    return "\n".join(lines)
+
+
 def default_paths(repo_root: Path) -> dict[str, Path]:
     base = repo_root / "reports" / "optimus-prime"
     return {
@@ -641,6 +676,7 @@ def generate_snapshot(config: InputConfig) -> dict[str, Any]:
         "errors": ctx.errors,
         "parse_warning_count": ctx.parse_warning_count,
         "text_summary": None,
+        "status_text": None,
     }
 
     if config.include_history:
@@ -667,6 +703,7 @@ def generate_snapshot(config: InputConfig) -> dict[str, Any]:
 
     if config.output_mode == "json+text":
         snapshot["text_summary"] = build_text_summary(snapshot)
+        snapshot["status_text"] = build_status_text(snapshot)
 
     return snapshot
 
