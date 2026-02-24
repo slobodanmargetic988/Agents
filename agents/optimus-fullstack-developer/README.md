@@ -45,13 +45,16 @@ Implement assigned fullstack unit-of-work packets from Optimus Prime in `automat
 - Required Skills:
   - None by default.
 - Potentially Required Skills:
+  - `dev-benchmark-runner` (when packet requires repeatable benchmark evidence artifacts)
   - `dev-ephemeral-db-runner` (when packet requires local DB-backed tests/benchmarks)
   - `playwright` (only when packet explicitly requires browser/UI flow verification)
 - If Missing, Install From:
   - Repo skill definitions:
+    - `skills/dev-benchmark-runner/SKILL.md`
     - `skills/dev-ephemeral-db-runner/SKILL.md`
     - `skills/playwright/SKILL.md`
   - Runtime skill locations:
+    - `$CODEX_HOME/skills/dev-benchmark-runner/SKILL.md`
     - `$CODEX_HOME/skills/dev-ephemeral-db-runner/SKILL.md`
     - `$CODEX_HOME/skills/playwright/SKILL.md`
   - User note: copy missing skill folders from repo `skills/` into `$CODEX_HOME/skills/`.
@@ -68,6 +71,13 @@ Implement assigned fullstack unit-of-work packets from Optimus Prime in `automat
   - payload fields: `profile_name`, `port`, `db_name`, `host`, `cleanup_mode`, `shared_memory_compat`, `dry_run`
 - Reuse returned `dsn` as `TEST_DATABASE_URL`/`DATABASE_URL`, then run packet checks.
 - Use returned `stop_cmd` (or `action=stop`) after checks; use `cleanup_mode=destroy_on_exit` when packet requests ephemeral teardown.
+
+### Dev Benchmark Runner Quick Use
+- Use `dev-benchmark-runner` when packet asks for deterministic benchmark evidence.
+- Minimal invocation:
+  - `python3 /Users/slobodan/Projects/Agents/skills/dev-benchmark-runner/scripts/dev_benchmark_runner.py --input-json -`
+  - payload fields: `script`, `dataset_size`, `iterations`, `warmup`, `max_retries`, `artifact_path`, `dry_run`
+- Return the exact `artifact_path` and summary metrics (`p50_ms`, `p95_ms`, `mean_ms`) in your handoff payload.
 
 ## Outputs
 - Fullstack code changes for the assigned unit.
