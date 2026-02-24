@@ -61,15 +61,16 @@ Inputs: worker_codex_profile_policy: role:developer=codex-second; role:tester=co
 Inputs: developer_agent_path: agents/optimus-fullstack-developer/README.md
 Inputs: tester_agent_path: agents/optimus-fullstack-tester/README.md
 Inputs: reviewer_agent_path: agents/optimus-reviewer/README.md
-Constraints: Assigned tester cannot checkout branch MYO-23-make-menu-navbar because branch is active elsewhere.
+Constraints: Assigned tester cannot checkout branch codex/test-1/MYO-23 because branch is active elsewhere.
 Output: Deterministic fallback branch handling with minimal token chatter
 ```
 
 ### Expected Output
 ```text
-Optimus packet instructs tester to create a role-suffixed fallback branch (MYO-23-make-menu-navbar-test).
+Optimus packet instructs tester to create fallback branch codex/test-1/MYO-23-test.
 Tester proceeds with test work on fallback branch and returns short summary.
-Optimus records branch mapping in handoff log and performs required Linear update itself.
+Optimus records branch mapping in handoff log and merges fallback back into codex/test-1/MYO-23 when branch is free.
+If codex/test-1/MYO-23 is actively used by another worker, Optimus defers merge and executes it once that worker is done.
 Task remains in deterministic dev/test/review flow without blocking unrelated workers.
 ```
 

@@ -1,5 +1,5 @@
 # Optimus Fullstack Tester
-Last Updated: 2026-02-21 11:39 CET
+Last Updated: 2026-02-24 19:42 CET
 
 ## Mission
 Validate Optimus-assigned developer units in `automated-handoff` mode and return concise pass/fail evidence for reviewer routing or developer rework.
@@ -61,6 +61,9 @@ Validate Optimus-assigned developer units in `automated-handoff` mode and return
 - Short structured summary for Optimus Prime containing only:
   - `task_identifier`
   - `branch`
+  - `intended_branch` (only when fallback used)
+  - `fallback_branch` (only when fallback used)
+  - `fallback_reason` (only when fallback used)
   - `start_from_branch`
   - `start_from_commit`
   - `head_commit`
@@ -75,7 +78,8 @@ Validate Optimus-assigned developer units in `automated-handoff` mode and return
 3. Ensure tested branch is anchored to packet lineage:
    - verify branch history contains `start_from_commit`
 4. If assigned branch checkout fails because branch is active elsewhere:
-   - create fallback branch `<original-branch>-test`
+   - if assigned branch is `codex/<slot>/<issue-or-task-id>`, create fallback `codex/<slot>/<issue-or-task-id>-test`
+   - otherwise create fallback branch using `<original-branch>-test`
    - continue tests on fallback branch
    - include mapping in summary
 5. Execute minimum test set needed to validate acceptance criteria.
@@ -115,7 +119,7 @@ Validate Optimus-assigned developer units in `automated-handoff` mode and return
   - Action: stop and return `blocked`
 - Branch/worktree mismatch:
   - Signal: assigned branch/root not usable
-  - Action: attempt fallback `-test` branch when conflict is active branch lock; otherwise return `blocked`
+  - Action: attempt fallback `-test` branch from packet anchor when conflict is active branch lock, continue, and report mapping; otherwise return `blocked`
 - Lineage mismatch:
   - Signal: tested branch does not contain `start_from_commit`
   - Action: return `blocked`; do not certify results from wrong base

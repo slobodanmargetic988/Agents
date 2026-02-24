@@ -1,5 +1,5 @@
 # Optimus Prime Orchestrator Agent
-Last Updated: 2026-02-21 12:24 CET
+Last Updated: 2026-02-24 19:42 CET
 
 ## Mission
 Run long-lived sprint orchestration in deterministic cycles using `tracking_mode=automated-handoff`, where Optimus Prime owns planning, worker dispatch, and all Linear updates while workers execute token-lean unit prompts.
@@ -119,6 +119,8 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
   - `developer_agent_path` (default: `agents/optimus-fullstack-developer/README.md`)
   - `tester_agent_path` (default: `agents/optimus-fullstack-tester/README.md`)
   - `reviewer_agent_path` (default: `agents/optimus-reviewer/README.md`)
+  - `blocker_project_name` (default: `Agents`)
+  - `blocker_assignee` (default: `me`)
 
 ## Tracking Mode: automated-handoff
 - Canonical state is Optimus-managed local orchestration files plus live worker-session status and branch lineage state.
@@ -130,6 +132,8 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Worker output contract is short summary only:
   - what was done
   - branch used
+  - intended branch when fallback was used
+  - fallback branch and fallback reason when fallback was used
   - start anchor used (`start_from_branch`, `start_from_commit`)
   - head commit
   - checks run and result
@@ -348,6 +352,15 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 12. At each cycle:
    - ingest worker outputs and session health
    - update `HANDOFF_LOG.jsonl`, `CYCLE_LOG.jsonl`, `BRANCH_LINEAGE.json`, and profile-rate registry/logs as scheduled
+   - when worker reports fallback branch mapping:
+     - default merge-back: merge fallback branch into intended branch
+     - defer merge-back only if intended branch currently has an active worker
+     - execute deferred merge-back as soon as that worker is done
+   - when blocker cannot be autonomously resolved:
+     - create/update blocker issue in Linear project `Agents`
+     - assign blocker issue to configured assignee (`blocker_assignee`, default `me`)
+     - include repro context, impact, attempted mitigation, and requested user action
+     - post explicit chat callout telling user to review blocker issue
    - sync Linear status/comments for completed unit outcomes (Optimus only)
    - apply rate-gate decisions before dispatching any new unit
    - start tester only after first developer completion
@@ -405,7 +418,11 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Soft concurrency throttle must only limit new dispatch; it must not forcibly terminate active workers.
 - If session token_count rate snapshot cannot be read/parsed for a profile, mark that profile non-eligible for new work until refreshed successfully.
 - For branch-on-branch tasks, starting point must reference the correct unmerged parent branch head commit from lineage registry.
-- If requested branch checkout fails because branch is active elsewhere, worker must create role-specific fallback branch (for example `MYO-23-make-menu-navbar-test`) and report it.
+- If requested branch checkout fails because branch is active elsewhere, worker must create role-specific fallback branch from assigned branch name:
+  - developer: `<assigned-branch>-dev` (for example `codex/dev-1/MYO-123-dev`)
+  - tester: `<assigned-branch>-test` (for example `codex/test-1/MYO-123-test`)
+- On fallback completion, Optimus must merge fallback branch back into intended branch unless intended branch currently has an active worker; in that case defer merge until that worker is done.
+- Unresolved blockers must be tracked in Linear project `Agents`, assigned to user (`blocker_assignee`), and explicitly called out in orchestrator chat.
 - Do not declare task done until dev/test/review chain is complete.
 
 ## Validation
@@ -441,7 +458,11 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
   - Action: queue write intent in `LINEAR_SYNC_LOG.jsonl`, continue orchestration, surface risk in cycle summary
 - Branch conflict in parallel worktrees:
   - Signal: checkout denied due branch already active elsewhere
-  - Action: create role-suffixed fallback branch and continue; require worker to report mapping
+  - Action:
+    - worker creates role-suffixed fallback branch (`-dev` or `-test`) from assigned branch anchor and continues
+    - worker reports `intended_branch` -> `fallback_branch` mapping
+    - Optimus merges fallback into intended branch by default
+    - if intended branch has active worker, Optimus defers merge until worker completes, then merges
 - Feature lane imbalance or churn:
   - Signal: developers frequently reassigned across features without lane completion/blocker events
   - Action: enforce sticky lane policy, log reassignment reason, and rebalance to distinct features when ready work exists
@@ -454,6 +475,9 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Invalid worker MCP dispatch policy:
   - Signal: requested MCP allowlist includes undefined MCP name for target profile config
   - Action: stop dispatch for affected worker packet, log policy error, fallback to `--disable-all-mcp` only if packet does not require MCPs; otherwise request correction
+- Unresolved operational blocker:
+  - Signal: worker/task cannot proceed after deterministic retries/mitigation
+  - Action: create/update blocker issue in `blocker_project_name` (default `Agents`), assign to `blocker_assignee` (default `me`), and explicitly notify user to review
 - Session rate snapshot unavailable or unparsable on primary profile:
   - Signal: primary `codex` profile latest session JSONL/token_count event missing or missing required fields
   - Action: enter conservative wind-down (no new dispatch) and retry rate snapshot before deciding to stop

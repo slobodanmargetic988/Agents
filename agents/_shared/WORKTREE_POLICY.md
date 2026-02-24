@@ -1,5 +1,5 @@
 # Shared Worktree Policy
-Last Updated: 2026-02-21 01:58 CET
+Last Updated: 2026-02-24 19:42 CET
 
 Use this file as the default policy for worktree handling across agents.
 
@@ -16,6 +16,22 @@ Use this file as the default policy for worktree handling across agents.
 - Inside each slot worktree, each task must use its own feature branch:
   - branch format: `codex/<slot>/<issue-or-task-id>`
 - Never run two different active tasks on the same branch.
+
+## Branch Checkout Fallback (Locked Branch)
+- Trigger: assigned branch `codex/<slot>/<issue-or-task-id>` cannot be checked out because it is already active in another worktree.
+- Developer fallback branch format: `codex/<slot>/<issue-or-task-id>-dev`
+- Tester fallback branch format: `codex/<slot>/<issue-or-task-id>-test`
+- Worker must:
+  - create fallback branch from packet anchor (`start_from_commit`) and continue work there
+  - commit task changes on fallback branch
+  - report fallback mapping in completion summary (`intended_branch`, `fallback_branch`, `fallback_reason=active-elsewhere`)
+
+## Fallback Merge-Back Ownership (Optimus)
+- Optimus decides and performs fallback merge-back.
+- Default action: merge fallback branch into intended branch after worker completion.
+- Defer merge-back only when another worker is actively running on that exact intended branch.
+- If deferred, queue merge-back and execute immediately after that active worker exits the intended branch.
+- Record merge-back/defer decision in handoff/cycle logs and update branch lineage.
 
 ## Hard Report Write Gate (Tester/Reviewer)
 - Tester and reviewer roles must write report/state/event files only inside the currently checked-out git worktree root.

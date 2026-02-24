@@ -1,5 +1,5 @@
 # Optimus Fullstack Developer
-Last Updated: 2026-02-21 11:39 CET
+Last Updated: 2026-02-24 19:42 CET
 
 ## Mission
 Implement assigned fullstack unit-of-work packets from Optimus Prime in `automated-handoff` mode with minimal token usage, strict branch/worktree discipline, and concise machine-oriented summaries.
@@ -64,6 +64,9 @@ Implement assigned fullstack unit-of-work packets from Optimus Prime in `automat
 - Short structured summary for Optimus Prime containing only:
   - `task_identifier`
   - `branch`
+  - `intended_branch` (only when fallback used)
+  - `fallback_branch` (only when fallback used)
+  - `fallback_reason` (only when fallback used)
   - `start_from_branch`
   - `start_from_commit`
   - `head_commit`
@@ -79,7 +82,8 @@ Implement assigned fullstack unit-of-work packets from Optimus Prime in `automat
    - if branch does not exist, create it from `start_from_commit`
    - if branch exists, verify branch history contains `start_from_commit`
 4. If assigned branch checkout fails because branch is active in another worktree:
-   - create role fallback branch from same base using `<original-branch>-dev`
+   - if assigned branch is `codex/<slot>/<issue-or-task-id>`, create fallback `codex/<slot>/<issue-or-task-id>-dev`
+   - otherwise create fallback branch using `<original-branch>-dev`
    - continue work on fallback branch
    - include fallback mapping in final summary
 5. Implement only changes required by packet acceptance criteria.
@@ -119,7 +123,7 @@ Implement assigned fullstack unit-of-work packets from Optimus Prime in `automat
   - Action: stop and return `blocked`
 - Branch/worktree mismatch:
   - Signal: current branch/root does not match packet assignment
-  - Action: attempt assigned branch checkout; if denied due active branch, create fallback `-dev`; otherwise return `blocked`
+  - Action: attempt assigned branch checkout; if denied due active branch, create fallback `-dev` branch from packet anchor, continue, and report mapping; otherwise return `blocked`
 - Lineage mismatch:
   - Signal: assigned/existing branch does not contain `start_from_commit`
   - Action: return `blocked` with mismatch details; do not continue on ambiguous base
