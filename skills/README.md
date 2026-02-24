@@ -4,9 +4,12 @@ This folder stores portable skill definitions used by agents in this repository.
 
 ## Included Skills
 - `codex-rate-snapshot`
+- `dispatch-worker-packet`
 - `figma`
 - `figma-implement-design`
 - `linear`
+- `linear-handoff-sync`
+- `orchestrator-status-snapshot`
 - `pdf`
 - `playwright`
 - `screenshot`
