@@ -534,7 +534,18 @@ def run_escalation(inp: EscalationInput, gateway: LinearGateway | None = None) -
             )
         return output
 
-    user = gateway.resolve_user(inp.assignee)
+    user: dict[str, Any] | None
+    try:
+        user = gateway.resolve_user(inp.assignee)
+    except ToolError as exc:
+        warnings.append(
+            {
+                "code": "assignment_resolution_failed",
+                "message": f"Assignee '{inp.assignee}' lookup failed ({exc.code}); proceeding without assignment",
+                "stage": exc.stage,
+            }
+        )
+        user = None
     assignee_id = None
     if user and isinstance(user, dict):
         assignee_id = user.get("id")

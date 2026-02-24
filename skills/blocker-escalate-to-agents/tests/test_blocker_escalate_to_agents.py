@@ -14,11 +14,21 @@ SPEC.loader.exec_module(MODULE)
 
 
 class FakeGateway:
-    def __init__(self, *, existing=None, fail_on_write=False, project_missing=False, user_missing=False, fail_on_list=False):
+    def __init__(
+        self,
+        *,
+        existing=None,
+        fail_on_write=False,
+        project_missing=False,
+        user_missing=False,
+        fail_on_user_lookup=False,
+        fail_on_list=False,
+    ):
         self.existing = existing or []
         self.fail_on_write = fail_on_write
         self.project_missing = project_missing
         self.user_missing = user_missing
+        self.fail_on_user_lookup = fail_on_user_lookup
         self.fail_on_list = fail_on_list
         self.created = []
         self.updated = []
@@ -29,6 +39,8 @@ class FakeGateway:
         return {"id": "project-1", "name": project_name, "team_id": "team-1"}
 
     def resolve_user(self, assignee: str):
+        if self.fail_on_user_lookup:
+            raise MODULE.ToolError("linear_unavailable", "cannot resolve user", stage="resolve_user")
         if self.user_missing:
             return None
         return {"id": "user-1", "name": "Me", "email": "me@example.com"}
@@ -138,6 +150,19 @@ class BlockerEscalateTests(unittest.TestCase):
             self.assertTrue(out["ok"])
             warn_codes = {w["code"] for w in out["warnings"]}
             self.assertIn("assignment_unresolved", warn_codes)
+
+    def test_assignment_lookup_error_degrades_to_warning(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            inp = base_input(root)
+            gateway = FakeGateway(existing=[], fail_on_user_lookup=True)
+            out = MODULE.run_escalation(inp, gateway=gateway)
+
+            self.assertTrue(out["ok"])
+            self.assertEqual(out["action"], "create")
+            self.assertEqual(out["issue_identifier"], "MYO-900")
+            warn_codes = {w["code"] for w in out["warnings"]}
+            self.assertIn("assignment_resolution_failed", warn_codes)
 
     def test_linear_unavailable_path_logs_pending(self):
         with tempfile.TemporaryDirectory() as tmp:
