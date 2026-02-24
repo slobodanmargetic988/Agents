@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -20,6 +21,8 @@ SCHEMA_VERSION = "1.0"
 
 CLEANUP_MODES = {"preserve", "destroy_on_exit"}
 ACTIONS = {"start", "stop"}
+SHM_COMPAT_PRIMARY = "none"
+SHM_COMPAT_FALLBACK_ORDER = ("mmap", "posix", "sysv")
 
 
 class ToolError(Exception):
@@ -225,18 +228,76 @@ def init_cluster(runner: CommandRunner, initdb: str, pgdata: Path) -> None:
         )
 
 
-def start_postgres(runner: CommandRunner, pg_ctl: str, pgdata: Path, logfile: Path, host: str, port: int, shared_memory_compat: bool) -> None:
-    opts = [f"-p {port}", f"-h {host}"]
-    if shared_memory_compat:
-        opts.append("-c dynamic_shared_memory_type=none")
-    opts_str = " ".join(opts)
+def start_postgres(
+    runner: CommandRunner,
+    pg_ctl: str,
+    pgdata: Path,
+    logfile: Path,
+    host: str,
+    port: int,
+    shared_memory_compat: bool,
+) -> list[dict[str, Any]]:
+    warnings: list[dict[str, Any]] = []
+
+    def start_with_dynamic_shm(value: str | None) -> CmdResult:
+        opts = [f"-p {port}", f"-h {host}"]
+        if value:
+            opts.append(f"-c dynamic_shared_memory_type={value}")
+        opts_str = " ".join(opts)
+        return runner.run([pg_ctl, "-D", str(pgdata), "-l", str(logfile), "-o", opts_str, "start"])
+
+    def parse_available_dynamic_shm_values(text: str) -> list[str]:
+        match = re.search(r"Available values:\s*([a-z,\s]+)\.", text, flags=re.IGNORECASE)
+        if not match:
+            return []
+        values = [part.strip().lower() for part in match.group(1).split(",")]
+        return [value for value in values if value]
+
     logfile.parent.mkdir(parents=True, exist_ok=True)
-    res = runner.run([pg_ctl, "-D", str(pgdata), "-l", str(logfile), "-o", opts_str, "start"])
-    if res.returncode != 0:
-        combined = f"{res.stdout}\n{res.stderr}".lower()
-        if "address already in use" in combined or "could not bind" in combined:
-            raise ToolError("port_occupied", f"Port {port} appears occupied", stage="start")
-        raise ToolError("startup_failed", f"pg_ctl start failed: {res.stderr.strip() or res.stdout.strip()}", stage="start")
+    dynamic_shm_value = SHM_COMPAT_PRIMARY if shared_memory_compat else None
+    res = start_with_dynamic_shm(dynamic_shm_value)
+    if res.returncode == 0:
+        return warnings
+
+    combined = f"{res.stdout}\n{res.stderr}".lower()
+    if "address already in use" in combined or "could not bind" in combined:
+        raise ToolError("port_occupied", f"Port {port} appears occupied", stage="start")
+
+    log_text = ""
+    try:
+        log_text = logfile.read_text(encoding="utf-8")
+    except OSError:
+        log_text = ""
+
+    invalid_dynamic_shm = (
+        shared_memory_compat
+        and "invalid value for parameter \"dynamic_shared_memory_type\"" in (combined + "\n" + log_text.lower())
+    )
+    if invalid_dynamic_shm:
+        available = parse_available_dynamic_shm_values(log_text or f"{res.stdout}\n{res.stderr}")
+        fallback = next((v for v in SHM_COMPAT_FALLBACK_ORDER if v in available), None)
+        if fallback is None and available:
+            fallback = available[0]
+        if fallback and fallback != SHM_COMPAT_PRIMARY:
+            retry = start_with_dynamic_shm(fallback)
+            if retry.returncode == 0:
+                warnings.append(
+                    {
+                        "code": "shared_memory_compat_fallback",
+                        "message": f"Retried PostgreSQL startup with dynamic_shared_memory_type={fallback}",
+                    }
+                )
+                return warnings
+            retry_text = f"{retry.stdout}\n{retry.stderr}".lower()
+            if "address already in use" in retry_text or "could not bind" in retry_text:
+                raise ToolError("port_occupied", f"Port {port} appears occupied", stage="start")
+            raise ToolError(
+                "startup_failed",
+                f"pg_ctl start failed after shared-memory fallback ({fallback}): {retry.stderr.strip() or retry.stdout.strip()}",
+                stage="start",
+            )
+
+    raise ToolError("startup_failed", f"pg_ctl start failed: {res.stderr.strip() or res.stdout.strip()}", stage="start")
 
 
 def wait_ready(runner: CommandRunner, binaries: dict[str, str], host: str, port: int) -> None:
@@ -315,7 +376,17 @@ def run_start(cfg: RunnerInput, runner: CommandRunner, which_fn: Callable[[str],
 
     if not already_running:
         init_cluster(runner, binaries["initdb"], paths["pgdata"])
-        start_postgres(runner, binaries["pg_ctl"], paths["pgdata"], paths["log"], cfg.host, cfg.port, cfg.shared_memory_compat)
+        warnings.extend(
+            start_postgres(
+                runner,
+                binaries["pg_ctl"],
+                paths["pgdata"],
+                paths["log"],
+                cfg.host,
+                cfg.port,
+                cfg.shared_memory_compat,
+            )
+        )
         wait_ready(runner, binaries, cfg.host, cfg.port)
     else:
         warnings.append({"code": "already_running", "message": "Profile already running; reusing existing instance"})

@@ -14,10 +14,11 @@ SPEC.loader.exec_module(MODULE)
 
 
 class FakeRunner(MODULE.CommandRunner):
-    def __init__(self, *, port_occupied: bool = False):
+    def __init__(self, *, port_occupied: bool = False, invalid_dynamic_shm_once: bool = False):
         self.running = False
         self.dbs = set()
         self.port_occupied = port_occupied
+        self.invalid_dynamic_shm_once = invalid_dynamic_shm_once
         self.calls = []
 
     def run(self, cmd):
@@ -35,6 +36,17 @@ class FakeRunner(MODULE.CommandRunner):
             if action == "status":
                 return MODULE.CmdResult(0 if self.running else 3, "running" if self.running else "", "")
             if action == "start":
+                if self.invalid_dynamic_shm_once:
+                    self.invalid_dynamic_shm_once = False
+                    if "-l" in cmd:
+                        log_path = Path(cmd[cmd.index("-l") + 1])
+                        log_path.parent.mkdir(parents=True, exist_ok=True)
+                        log_path.write_text(
+                            'FATAL:  invalid value for parameter "dynamic_shared_memory_type": "none"\n'
+                            "HINT:  Available values: posix, sysv, mmap.\n",
+                            encoding="utf-8",
+                        )
+                    return MODULE.CmdResult(1, "", "pg_ctl: could not start server\nExamine the log output.")
                 if self.port_occupied:
                     return MODULE.CmdResult(1, "", "address already in use")
                 self.running = True
@@ -154,6 +166,22 @@ class DevEphemeralDbRunnerTests(unittest.TestCase):
             with self.assertRaises(MODULE.ToolError) as ctx:
                 MODULE.run(c, runner=FakeRunner(), which_fn=missing_which)
             self.assertEqual(ctx.exception.code, "missing_binaries")
+
+    def test_shared_memory_compat_fallback_when_none_invalid(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            runner = FakeRunner(invalid_dynamic_shm_once=True)
+            c = cfg(root, action="start", shared_memory_compat=True)
+            out = MODULE.run(c, runner=runner, which_fn=fake_which)
+
+            self.assertTrue(out["ok"])
+            warn_codes = {w["code"] for w in out["warnings"]}
+            self.assertIn("shared_memory_compat_fallback", warn_codes)
+
+            start_calls = [call for call in runner.calls if Path(call[0]).name == "pg_ctl" and call[-1] == "start"]
+            self.assertEqual(len(start_calls), 2)
+            self.assertIn("dynamic_shared_memory_type=none", " ".join(start_calls[0]))
+            self.assertIn("dynamic_shared_memory_type=mmap", " ".join(start_calls[1]))
 
     def test_dry_run(self):
         with tempfile.TemporaryDirectory() as tmp:

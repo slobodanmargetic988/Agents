@@ -43,6 +43,24 @@ def cfg(root: Path, **overrides):
 
 
 class DevOpenApiClientSyncTests(unittest.TestCase):
+    def test_render_command_allows_literal_json_braces(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            c = cfg(root)
+            cmd = MODULE.render_command(
+                "python3 -c \"print('{\\\"openapi\\\":\\\"3.0.0\\\",\\\"paths\\\":{}}')\"",
+                c,
+            )
+            self.assertEqual(cmd[0], "python3")
+
+    def test_render_command_rejects_unknown_placeholder(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            c = cfg(root)
+            with self.assertRaises(MODULE.ToolError) as ctx:
+                MODULE.render_command("python3 -c \"print('{unknown_token}')\"", c)
+            self.assertEqual(ctx.exception.code, "input_error")
+
     def test_changed_file_detection_unit(self):
         before = {"a.ts": "h1", "b.ts": "h2"}
         after = {"a.ts": "h1", "b.ts": "h3", "c.ts": "h4"}

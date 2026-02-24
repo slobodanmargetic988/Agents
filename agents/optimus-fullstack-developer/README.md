@@ -75,6 +75,19 @@ Implement assigned fullstack unit-of-work packets from Optimus Prime in `automat
 - Restart Note:
   - After installing any missing skill, restart Codex before running this agent again.
 
+## Tool-First Developer Policy
+- When packet scope matches one of the developer tools, prefer tool execution over manual multi-command chains.
+- Tool mapping:
+  - DB runtime/bootstrap checks -> `dev-ephemeral-db-runner`
+  - benchmark evidence generation -> `dev-benchmark-runner`
+  - OpenAPI export/client regeneration -> `dev-openapi-client-sync`
+  - acceptance-check command bundles -> `dev-check-bundle`
+  - final strict handoff payload -> `dev-handoff-summary-builder`
+- Manual fallback is allowed only when:
+  - the tool is unavailable, or
+  - the packet explicitly requires a non-tool command path.
+- When using manual fallback, include the skipped tool name and reason in the final summary blockers/findings.
+
 ### Dev DB Runner Quick Use
 - Use `dev-ephemeral-db-runner` before DB-backed checks to avoid manual `initdb/pg_ctl/createdb` chains.
 - Minimal start invocation:
@@ -144,10 +157,14 @@ Implement assigned fullstack unit-of-work packets from Optimus Prime in `automat
    - run `reset -> migrate -> seed` against a task-scoped temporary DB URL
    - update seed scripts when needed
    - ensure seed/reset path can target explicit DB URL (argument and/or env-driven configuration)
-7. Run minimum relevant checks for touched surface area.
-8. Create task-scoped commit(s) with `task_identifier` in commit message.
-9. Produce concise summary in strict machine format with no extra narrative.
-10. Stop and wait for next Optimus packet.
+7. Use tool-first execution for checks/evidence when packet matches:
+   - `dev-check-bundle` for acceptance-check runs and unified verdict.
+   - `dev-benchmark-runner` for benchmark evidence tasks.
+   - `dev-openapi-client-sync` for OpenAPI/client drift tasks.
+8. Run minimum relevant checks for touched surface area (via tool outputs when applicable).
+9. Create task-scoped commit(s) with `task_identifier` in commit message.
+10. Produce concise summary in strict machine format with no extra narrative; prefer `dev-handoff-summary-builder` for final payload generation.
+11. Stop and wait for next Optimus packet.
 
 ## Constraints
 - Do not use `linear` skill.

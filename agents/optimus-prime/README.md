@@ -193,6 +193,11 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 
 ## Skills
 - Required Skills:
+  - `orchestrator-status-snapshot` (single-call worker/cycle/rate snapshot for control reporting)
+  - `cycle-tick` (deterministic dispatch/sleep decision with rate + cycle log updates)
+  - `dispatch-worker-packet` (atomic packet build + thread-dispatch + state file updates)
+  - `linear-handoff-sync` (atomic Linear status/comment sync + local sync log append)
+  - `blocker-escalate-to-agents` (deterministic blocker dedup + create/update in project `Agents`)
   - `codex-rate-snapshot` (read profile rate limits + identity from session JSONL/auth.json)
   - `thread-dispatch` (launch/monitor worker runs)
   - `sleep` (5-minute cycle control)
@@ -209,6 +214,11 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
   - `codex` alias means default profile (no override).
 - If Missing, Install From:
   - Repo skill definitions:
+    - `skills/orchestrator-status-snapshot/SKILL.md`
+    - `skills/cycle-tick/SKILL.md`
+    - `skills/dispatch-worker-packet/SKILL.md`
+    - `skills/linear-handoff-sync/SKILL.md`
+    - `skills/blocker-escalate-to-agents/SKILL.md`
     - `skills/codex-rate-snapshot/SKILL.md`
     - `skills/thread-dispatch/SKILL.md`
     - `skills/sleep/SKILL.md`
@@ -216,6 +226,11 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
     - `skills/linear/SKILL.md`
     - `skills/playwright/SKILL.md`
   - Runtime skill locations:
+    - `$CODEX_HOME/skills/orchestrator-status-snapshot/SKILL.md`
+    - `$CODEX_HOME/skills/cycle-tick/SKILL.md`
+    - `$CODEX_HOME/skills/dispatch-worker-packet/SKILL.md`
+    - `$CODEX_HOME/skills/linear-handoff-sync/SKILL.md`
+    - `$CODEX_HOME/skills/blocker-escalate-to-agents/SKILL.md`
     - `$CODEX_HOME/skills/codex-rate-snapshot/SKILL.md`
     - `$CODEX_HOME/skills/thread-dispatch/SKILL.md`
     - `$CODEX_HOME/skills/sleep/SKILL.md`
@@ -224,11 +239,26 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
     - `$CODEX_HOME/skills/playwright/SKILL.md`
   - User note: copy missing skill folders from repo `skills/` into `$CODEX_HOME/skills/`.
 - Fallback Behavior If Skill Is Unavailable:
-  - Missing `codex-rate-snapshot`, `thread-dispatch`, or `workstation-preparation`: stop orchestration and request fix.
+  - Missing `orchestrator-status-snapshot`, `cycle-tick`, `dispatch-worker-packet`, `linear-handoff-sync`, `blocker-escalate-to-agents`, `codex-rate-snapshot`, `thread-dispatch`, or `workstation-preparation`: stop orchestration and request fix.
   - Missing `linear`: continue worker orchestration, queue pending Linear updates in `linear_sync_log_path`, and mark mission as partially synchronized.
   - Missing `sleep`: continue with manual cycle timing and log the deviation.
 - Restart Note:
   - After installing any missing skill, restart Codex before running this agent again.
+
+## Tool-First Automation Policy
+- Optimus must prefer deterministic orchestration tools over manual multi-step operations.
+- Required tool mapping:
+  - status/report snapshot: `orchestrator-status-snapshot`
+  - cycle gate decision: `cycle-tick`
+  - worker dispatch + state writes: `dispatch-worker-packet`
+  - Linear handoff/status sync: `linear-handoff-sync`
+  - unresolved workflow blocker escalation: `blocker-escalate-to-agents`
+- Manual fallback is allowed only when a required tool run fails or is unavailable.
+- Any manual fallback must be logged in `CYCLE_LOG.jsonl` with:
+  - `manual_fallback=true`
+  - `tool_name`
+  - `reason`
+  - `next_fix_action`
 
 ## MCP
 - Required MCP Servers:
@@ -379,8 +409,10 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
    - assigned developer slot per feature
    - lane blocked/active status
    - reassignment reason when a developer changes feature lane
-11. Dispatch first developer unit packet and start cycle loop.
+11. Dispatch first developer unit packet via `dispatch-worker-packet` and start cycle loop.
 12. At each cycle:
+   - generate current control view via `orchestrator-status-snapshot` (worker/cycle/handoff/rate state)
+   - evaluate dispatch/sleep action via `cycle-tick` before assigning new units
    - ingest worker outputs and session health
    - update `HANDOFF_LOG.jsonl`, `CYCLE_LOG.jsonl`, `BRANCH_LINEAGE.json`, and profile-rate registry/logs as scheduled
    - when worker reports fallback branch mapping:
@@ -388,11 +420,10 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
      - defer merge-back only if intended branch currently has an active worker
      - execute deferred merge-back as soon as that worker is done
    - when blocker cannot be autonomously resolved:
-     - create/update blocker issue in Linear project `Agents`
-     - assign blocker issue to configured assignee (`blocker_assignee`, default `me`)
-     - include repro context, impact, attempted mitigation, and requested user action
+     - run `blocker-escalate-to-agents` to create/update blocker issue in project `Agents`
+     - assign blocker to configured assignee (`blocker_assignee`, default `me`)
      - post explicit chat callout telling user to review blocker issue
-   - sync Linear status/comments for completed unit outcomes (Optimus only)
+   - sync Linear status/comments for completed unit outcomes with `linear-handoff-sync` (Optimus only)
    - apply rate-gate decisions before dispatching any new unit
    - enforce developer dispatch only to slots with passing developer runtime health gate
    - enforce tester dispatch only to slots currently marked `ready_for_dispatch=true` in tester health registry
@@ -404,6 +435,7 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
    - keep developer feature affinity stable unless lane is complete/blocked or user steering requests reassignment
    - keep testers waiting on reviewer outcome for their active task
 13. Before sleep, post concise control update in orchestrator chat:
+   - prefer `orchestrator-status-snapshot --format text` output directly in chat
    - active workers
    - idle workers
    - task state per worker

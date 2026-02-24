@@ -21,7 +21,8 @@ Inputs: test_focus:
 Inputs: constraints:
 Inputs: fallback_branch_suffix: -dev
 Inputs: db_seed_profile: minimal
-Constraints: No Linear updates. No orchestration file writes. Minimum checks required for acceptance criteria only. Summary must be concise and emoji-free. If DB-facing behavior changes, developer must keep `reset -> migrate -> seed` runnable on a task-scoped temporary DB and update seed/reset scripts as needed (explicit DB URL targeting required).
+Inputs: developer_tooling_policy: tool-first
+Constraints: No Linear updates. No orchestration file writes. Minimum checks required for acceptance criteria only. Summary must be concise and emoji-free. Developer should prefer built-in dev tools when task scope matches (`dev-ephemeral-db-runner`, `dev-benchmark-runner`, `dev-openapi-client-sync`, `dev-check-bundle`, `dev-handoff-summary-builder`), using manual commands only when tool is unavailable or packet explicitly requires manual path (and then report skipped tool + reason). If DB-facing behavior changes, developer must keep `reset -> migrate -> seed` runnable on a task-scoped temporary DB and update seed/reset scripts as needed (explicit DB URL targeting required).
 Output: Code changes + task commit(s) + strict concise summary for Optimus
 ```
 
@@ -46,6 +47,7 @@ Inputs: test_focus: component tests for navbar interactions + production build
 Inputs: constraints: Keep patch scoped to navbar only.
 Inputs: fallback_branch_suffix: -dev
 Inputs: db_seed_profile: minimal
-Constraints: No Linear updates. No orchestration file writes. Minimum checks required for acceptance criteria only. Summary must be concise and emoji-free. If DB-facing behavior changes, developer must keep `reset -> migrate -> seed` runnable on a task-scoped temporary DB and update seed/reset scripts as needed (explicit DB URL targeting required).
+Inputs: developer_tooling_policy: tool-first
+Constraints: No Linear updates. No orchestration file writes. Minimum checks required for acceptance criteria only. Summary must be concise and emoji-free. Developer should prefer built-in dev tools when task scope matches (`dev-ephemeral-db-runner`, `dev-benchmark-runner`, `dev-openapi-client-sync`, `dev-check-bundle`, `dev-handoff-summary-builder`), using manual commands only when tool is unavailable or packet explicitly requires manual path (and then report skipped tool + reason). If DB-facing behavior changes, developer must keep `reset -> migrate -> seed` runnable on a task-scoped temporary DB and update seed/reset scripts as needed (explicit DB URL targeting required).
 Output: Code changes + task commit(s) + strict concise summary for Optimus
 ```

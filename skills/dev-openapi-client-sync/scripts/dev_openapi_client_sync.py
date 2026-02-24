@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -119,12 +120,34 @@ def parse_input(args: argparse.Namespace) -> SyncInput:
     )
 
 
+PLACEHOLDER_VALUES = ("openapi_output", "client_root", "base_url_override")
+
+
 def render_command(template: str, cfg: SyncInput) -> list[str]:
-    rendered = template.format(
-        openapi_output=str(cfg.openapi_output),
-        client_root=str(cfg.client_root),
-        base_url_override=cfg.base_url_override or "",
-    ).strip()
+    rendered = template
+    values = {
+        "openapi_output": str(cfg.openapi_output),
+        "client_root": str(cfg.client_root),
+        "base_url_override": cfg.base_url_override or "",
+    }
+    for key, value in values.items():
+        rendered = rendered.replace("{" + key + "}", value)
+
+    unresolved = sorted(
+        {
+            m.group(1)
+            for m in re.finditer(r"\{([A-Za-z_][A-Za-z0-9_]*)\}", rendered)
+            if m.group(1) not in PLACEHOLDER_VALUES
+        }
+    )
+    if unresolved:
+        raise ToolError(
+            "input_error",
+            f"Unknown command placeholder(s): {', '.join(unresolved)}",
+            stage="input",
+        )
+
+    rendered = rendered.strip()
     if not rendered:
         raise ToolError("input_error", "Rendered command is empty", stage="input")
     return shlex.split(rendered)
