@@ -747,6 +747,34 @@ def load_input_json(path: str) -> dict[str, Any]:
     return data
 
 
+def resolve_linear_workflow_path(repo_root: Path, override: str | None) -> Path:
+    if override:
+        requested = Path(str(override)).expanduser()
+        if not requested.is_absolute():
+            requested = (repo_root / requested).resolve()
+        return requested
+
+    env_path = os.environ.get("LINEAR_WORKFLOW_PATH")
+    if env_path:
+        candidate = Path(env_path).expanduser()
+        if not candidate.is_absolute():
+            candidate = (repo_root / candidate).resolve()
+        if candidate.exists():
+            return candidate
+
+    candidates = [
+        (repo_root / DEFAULT_LINEAR_WORKFLOW_PATH).resolve(),
+        (repo_root / "Agents" / "agents" / "_shared" / "LINEAR_WORKFLOW.md").resolve(),
+        (repo_root.parent / "Agents" / "agents" / "_shared" / "LINEAR_WORKFLOW.md").resolve(),
+        (Path.cwd() / "agents" / "_shared" / "LINEAR_WORKFLOW.md").resolve(),
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+
+    return candidates[0]
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Atomic Linear status/comment synchronization with local log append.")
     parser.add_argument("--input-json", help="Path to JSON payload (or '-' for stdin).")
@@ -792,12 +820,7 @@ def merge_cli_and_json(args: argparse.Namespace) -> SyncInput:
     repo_root = Path(args.repo_root).expanduser().resolve()
 
     wf = payload.get("linear_workflow_path") or args.linear_workflow_path
-    if wf:
-        linear_workflow_path = Path(str(wf)).expanduser()
-        if not linear_workflow_path.is_absolute():
-            linear_workflow_path = (repo_root / linear_workflow_path).resolve()
-    else:
-        linear_workflow_path = (repo_root / DEFAULT_LINEAR_WORKFLOW_PATH).resolve()
+    linear_workflow_path = resolve_linear_workflow_path(repo_root, None if wf in (None, "") else str(wf))
 
     log_path_raw = payload.get("linear_sync_log_path") or args.linear_sync_log_path
     if log_path_raw:

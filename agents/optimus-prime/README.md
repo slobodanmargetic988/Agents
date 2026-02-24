@@ -248,10 +248,12 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 ## Outputs
 - `reports/optimus-prime/WORKER_REGISTRY.json`
   - worker slot map, thinking profile, role, Codex profile alias/home, MCP dispatch mode/allowlist, feature lane assignment, session state (`running|idle|stopped|blocked`)
+  - required thread identity field: `session_id` (latest known worker thread id for the slot, from dispatch log or direct dispatch result)
 - `reports/optimus-prime/CYCLE_LOG.jsonl`
   - cycle summaries, dispatch decisions, sleep/skip-sleep actions
 - `reports/optimus-prime/HANDOFF_LOG.jsonl`
   - unit-of-work transitions across dev/test/review phases
+  - dispatch records must include `session_id` whenever available (`dispatch_attempt`, `dispatch_result`)
 - `reports/optimus-prime/LINEAR_SYNC_LOG.jsonl`
   - Optimus-only status/comment writes and retry queue when unavailable
 - `reports/optimus-prime/IDENTITY_CHECKPOINT.md`
@@ -271,6 +273,9 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 
 ## Workflow
 1. Load mission scope and gather candidate tasks from `task_source`.
+1a. Validate tracking workflow contract path when tracking mode is linear:
+   - if `tracking_mode=linear`, `linear_workflow_path` must exist and be readable before dispatch
+   - if workflow file is missing/unreadable, stop new dispatch and return blocked with explicit remediation
 2. Filter to actionable tasks and build deterministic unit-of-work packets.
 2a. Build feature groups from packet metadata:
    - derive `feature_key` using `feature_grouping_fields` precedence (for example parent issue, epic, feature label)
@@ -366,7 +371,11 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
      - use thread-dispatch `--disable-all-mcp` by default
      - use thread-dispatch `--enable-only-mcp` when packet requires specific MCPs
 10. Record all initialized threads in `WORKER_REGISTRY.json` and mark run-state.
-10a. Record/update feature lane state in `FEATURE_LANES.json`:
+10a. Persist worker thread identity:
+   - capture `session_id` from thread-dispatch response/log for every dispatch attempt
+   - write `session_id` into slot record in `WORKER_REGISTRY.json`
+   - include `session_id` in `HANDOFF_LOG.jsonl` dispatch events when available
+10b. Record/update feature lane state in `FEATURE_LANES.json`:
    - assigned developer slot per feature
    - lane blocked/active status
    - reassignment reason when a developer changes feature lane
@@ -428,6 +437,7 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Default dispatch target must be Optimus worker set (`optimus-fullstack-developer`, `optimus-fullstack-tester`, `optimus-reviewer`) unless user overrides it.
 - Worker Codex profile assignment must be deterministic and persisted per worker thread.
 - Do not silently move a running/reused worker thread to a different Codex profile unless user explicitly updates the profile policy.
+- If `tracking_mode=linear`, `linear_workflow_path` must exist and be readable; do not dispatch when workflow mapping file is missing.
 - Worker MCP enablement must be minimized by default (`--disable-all-mcp`) and only expanded when the assigned packet explicitly requires MCP access.
 - Do not grant `linear` or `linear_sse` MCP access to workers; Optimus is the only actor that updates Linear.
 - Worker sandbox default must be `danger-full-access` for developer/tester/reviewer unless user explicitly requests sandboxed behavior.
@@ -459,6 +469,8 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Every running worker has one active packet and one assigned workstation.
 - Every initialized worker has resolved `codex_profile_alias` and `codex_home` (or explicit default profile marker).
 - Every initialized/running worker has recorded MCP dispatch mode (`disable-all` or `enable-only`) and allowlist (if any).
+- Every initialized/running worker has latest known `session_id` recorded in worker registry (or explicit null when unavailable).
+- Dispatch events in `HANDOFF_LOG.jsonl` include `session_id` whenever thread identity is available.
 - Every initialized/running worker has recorded sandbox mode and sandbox-policy source (default vs explicit override).
 - Developer runtime health gate must pass before developer dispatch and unhealthy developer slots are not dispatched.
 - Every active developer has a recorded `feature_key` lane assignment (or explicit `idle-unassigned` state).

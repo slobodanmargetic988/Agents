@@ -1,9 +1,11 @@
 import importlib.util
 import json
+import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 SCRIPT_PATH = Path(__file__).resolve().parents[1] / "scripts" / "linear_handoff_sync.py"
 SPEC = importlib.util.spec_from_file_location("linear_handoff_sync", SCRIPT_PATH)
@@ -202,6 +204,27 @@ class LinearHandoffSyncTests(unittest.TestCase):
             self.assertFalse(out["log_written"])
             self.assertGreaterEqual(len(out["planned_actions"]), 5)
             self.assertFalse(config.linear_sync_log_path.exists())
+
+    def test_resolve_workflow_path_uses_sibling_agents_repo(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            myboard_root = base / "MyBoard"
+            myboard_root.mkdir(parents=True, exist_ok=True)
+            sibling_workflow = base / "Agents" / "agents" / "_shared" / "LINEAR_WORKFLOW.md"
+            make_workflow_file(sibling_workflow)
+
+            resolved = MODULE.resolve_linear_workflow_path(myboard_root, None)
+            self.assertEqual(resolved, sibling_workflow.resolve())
+
+    def test_resolve_workflow_path_prefers_env_override_when_exists(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            custom_workflow = root / "custom" / "LINEAR_WORKFLOW.md"
+            make_workflow_file(custom_workflow)
+
+            with patch.dict(os.environ, {"LINEAR_WORKFLOW_PATH": "custom/LINEAR_WORKFLOW.md"}, clear=False):
+                resolved = MODULE.resolve_linear_workflow_path(root, None)
+                self.assertEqual(resolved, custom_workflow.resolve())
 
 
 if __name__ == "__main__":
