@@ -23,6 +23,7 @@ This folder stores portable skill definitions used by agents in this repository.
 - `sleep`
 - `speech`
 - `spreadsheet`
+- `tester-handoff-summary-builder`
 - `tester-preflight-resolver`
 - `tester-targeted-pytest-runner`
 - `skill-creator`
