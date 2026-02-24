@@ -47,15 +47,18 @@ Implement assigned fullstack unit-of-work packets from Optimus Prime in `automat
 - Potentially Required Skills:
   - `dev-benchmark-runner` (when packet requires repeatable benchmark evidence artifacts)
   - `dev-ephemeral-db-runner` (when packet requires local DB-backed tests/benchmarks)
+  - `dev-openapi-client-sync` (when packet requires schema/type-alignment sync and drift report)
   - `playwright` (only when packet explicitly requires browser/UI flow verification)
 - If Missing, Install From:
   - Repo skill definitions:
     - `skills/dev-benchmark-runner/SKILL.md`
     - `skills/dev-ephemeral-db-runner/SKILL.md`
+    - `skills/dev-openapi-client-sync/SKILL.md`
     - `skills/playwright/SKILL.md`
   - Runtime skill locations:
     - `$CODEX_HOME/skills/dev-benchmark-runner/SKILL.md`
     - `$CODEX_HOME/skills/dev-ephemeral-db-runner/SKILL.md`
+    - `$CODEX_HOME/skills/dev-openapi-client-sync/SKILL.md`
     - `$CODEX_HOME/skills/playwright/SKILL.md`
   - User note: copy missing skill folders from repo `skills/` into `$CODEX_HOME/skills/`.
 - Fallback Behavior If Skill Is Unavailable:
@@ -78,6 +81,13 @@ Implement assigned fullstack unit-of-work packets from Optimus Prime in `automat
   - `python3 /Users/slobodan/Projects/Agents/skills/dev-benchmark-runner/scripts/dev_benchmark_runner.py --input-json -`
   - payload fields: `script`, `dataset_size`, `iterations`, `warmup`, `max_retries`, `artifact_path`, `dry_run`
 - Return the exact `artifact_path` and summary metrics (`p50_ms`, `p95_ms`, `mean_ms`) in your handoff payload.
+
+### Dev OpenAPI Client Sync Quick Use
+- Use `dev-openapi-client-sync` for schema/type alignment packets (`openapi export` + client regeneration + drift summary).
+- Minimal invocation:
+  - `python3 /Users/slobodan/Projects/Agents/skills/dev-openapi-client-sync/scripts/dev_openapi_client_sync.py --input-json -`
+  - payload fields: `openapi_output`, `client_root`, `generate_command`, optional `base_url_override`, `fail_on_drift`, `dry_run`
+- Include `changed_files` and `drift_detected` from tool output in your handoff summary so Optimus can decide follow-up actions.
 
 ## Outputs
 - Fullstack code changes for the assigned unit.
