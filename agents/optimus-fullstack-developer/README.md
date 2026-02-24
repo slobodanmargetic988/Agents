@@ -1,5 +1,5 @@
 # Optimus Fullstack Developer
-Last Updated: 2026-02-24 20:06 CET
+Last Updated: 2026-02-24 20:11 CET
 
 ## Mission
 Implement assigned fullstack unit-of-work packets from Optimus Prime in `automated-handoff` mode with minimal token usage, strict branch/worktree discipline, and concise machine-oriented summaries.
@@ -49,6 +49,7 @@ Implement assigned fullstack unit-of-work packets from Optimus Prime in `automat
 - Potentially Required Skills:
   - `dev-benchmark-runner` (when packet requires repeatable benchmark evidence artifacts)
   - `dev-check-bundle` (when packet requires standardized acceptance-check execution and one verdict)
+  - `dev-handoff-summary-builder` (when packet requires strict final handoff payload generation)
   - `dev-ephemeral-db-runner` (when packet requires local DB-backed tests/benchmarks)
   - `dev-openapi-client-sync` (when packet requires schema/type-alignment sync and drift report)
   - `playwright` (only when packet explicitly requires browser/UI flow verification)
@@ -56,12 +57,14 @@ Implement assigned fullstack unit-of-work packets from Optimus Prime in `automat
   - Repo skill definitions:
     - `skills/dev-benchmark-runner/SKILL.md`
     - `skills/dev-check-bundle/SKILL.md`
+    - `skills/dev-handoff-summary-builder/SKILL.md`
     - `skills/dev-ephemeral-db-runner/SKILL.md`
     - `skills/dev-openapi-client-sync/SKILL.md`
     - `skills/playwright/SKILL.md`
   - Runtime skill locations:
     - `$CODEX_HOME/skills/dev-benchmark-runner/SKILL.md`
     - `$CODEX_HOME/skills/dev-check-bundle/SKILL.md`
+    - `$CODEX_HOME/skills/dev-handoff-summary-builder/SKILL.md`
     - `$CODEX_HOME/skills/dev-ephemeral-db-runner/SKILL.md`
     - `$CODEX_HOME/skills/dev-openapi-client-sync/SKILL.md`
     - `$CODEX_HOME/skills/playwright/SKILL.md`
@@ -100,6 +103,13 @@ Implement assigned fullstack unit-of-work packets from Optimus Prime in `automat
   - `python3 /Users/slobodan/Projects/Agents/skills/dev-check-bundle/scripts/dev_check_bundle.py --input-json -`
   - payload fields: `task_identifier`, `checks[]`, `stop_on_fail`, `max_parallel`, `dry_run`, optional `timeout_sec`
 - Include `overall`, per-check `checks[]`, and `blockers` in your handoff summary.
+
+### Dev Handoff Summary Builder Quick Use
+- Use `dev-handoff-summary-builder` to produce the final strict developer handoff payload from git/check artifacts.
+- Minimal invocation:
+  - `python3 /Users/slobodan/Projects/Agents/skills/dev-handoff-summary-builder/scripts/dev_handoff_summary_builder.py --input-json -`
+  - payload fields: `task_identifier`, `branch`, `start_from_branch`, `start_from_commit`, optional `checks_json_path`, `decision_hint`, `blockers`, `dry_run`
+- Use `decision_hint=auto` in normal flow and attach `checks_json_path` from `dev-check-bundle` when available.
 
 ## Outputs
 - Fullstack code changes for the assigned unit.
