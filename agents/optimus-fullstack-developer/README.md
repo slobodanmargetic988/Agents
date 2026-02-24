@@ -45,11 +45,14 @@ Implement assigned fullstack unit-of-work packets from Optimus Prime in `automat
 - Required Skills:
   - None by default.
 - Potentially Required Skills:
+  - `dev-ephemeral-db-runner` (when packet requires local DB-backed tests/benchmarks)
   - `playwright` (only when packet explicitly requires browser/UI flow verification)
 - If Missing, Install From:
   - Repo skill definitions:
+    - `skills/dev-ephemeral-db-runner/SKILL.md`
     - `skills/playwright/SKILL.md`
   - Runtime skill locations:
+    - `$CODEX_HOME/skills/dev-ephemeral-db-runner/SKILL.md`
     - `$CODEX_HOME/skills/playwright/SKILL.md`
   - User note: copy missing skill folders from repo `skills/` into `$CODEX_HOME/skills/`.
 - Fallback Behavior If Skill Is Unavailable:
@@ -57,6 +60,14 @@ Implement assigned fullstack unit-of-work packets from Optimus Prime in `automat
   - Never block the whole unit for missing optional skill unless acceptance criteria explicitly require it.
 - Restart Note:
   - After installing any missing skill, restart Codex before running this agent again.
+
+### Dev DB Runner Quick Use
+- Use `dev-ephemeral-db-runner` before DB-backed checks to avoid manual `initdb/pg_ctl/createdb` chains.
+- Minimal start invocation:
+  - `python3 /Users/slobodan/Projects/Agents/skills/dev-ephemeral-db-runner/scripts/dev_ephemeral_db_runner.py --input-json -`
+  - payload fields: `profile_name`, `port`, `db_name`, `host`, `cleanup_mode`, `shared_memory_compat`, `dry_run`
+- Reuse returned `dsn` as `TEST_DATABASE_URL`/`DATABASE_URL`, then run packet checks.
+- Use returned `stop_cmd` (or `action=stop`) after checks; use `cleanup_mode=destroy_on_exit` when packet requests ephemeral teardown.
 
 ## Outputs
 - Fullstack code changes for the assigned unit.
