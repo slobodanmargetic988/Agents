@@ -20,7 +20,8 @@ Inputs: changed_files_hint:
 Inputs: test_focus:
 Inputs: constraints:
 Inputs: fallback_branch_suffix: -dev
-Constraints: No Linear updates. No orchestration file writes. Minimum checks required for acceptance criteria only. Summary must be concise and emoji-free.
+Inputs: db_seed_profile: minimal
+Constraints: No Linear updates. No orchestration file writes. Minimum checks required for acceptance criteria only. Summary must be concise and emoji-free. If DB-facing behavior changes, developer must keep `reset -> migrate -> seed` runnable on a task-scoped temporary DB and update seed/reset scripts as needed (explicit DB URL targeting required).
 Output: Code changes + task commit(s) + strict concise summary for Optimus
 ```
 
@@ -44,6 +45,7 @@ Inputs: changed_files_hint: src/components/navbar, src/styles/navbar.css
 Inputs: test_focus: component tests for navbar interactions + production build
 Inputs: constraints: Keep patch scoped to navbar only.
 Inputs: fallback_branch_suffix: -dev
-Constraints: No Linear updates. No orchestration file writes. Minimum checks required for acceptance criteria only. Summary must be concise and emoji-free.
+Inputs: db_seed_profile: minimal
+Constraints: No Linear updates. No orchestration file writes. Minimum checks required for acceptance criteria only. Summary must be concise and emoji-free. If DB-facing behavior changes, developer must keep `reset -> migrate -> seed` runnable on a task-scoped temporary DB and update seed/reset scripts as needed (explicit DB URL targeting required).
 Output: Code changes + task commit(s) + strict concise summary for Optimus
 ```

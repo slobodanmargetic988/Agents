@@ -18,7 +18,7 @@ Inputs: harness_mode: targeted
 Inputs: test_focus:
 Inputs: fallback_branch_suffix: -test
 Inputs: constraints:
-Constraints: No Linear updates. No orchestration file writes. No new task before reviewer outcome for current task. Summary must be concise and emoji-free.
+Constraints: No Linear updates. No orchestration file writes. No new task before reviewer outcome for current task. Summary must be concise and emoji-free. If DB-backed checks are required, tester must start from fresh task DB state (`reset -> migrate -> seed`) and not reuse previous task DB state. Tester runtime is expected unsandboxed by default unless user explicitly requests sandboxed mode.
 Output: Test evidence + strict concise summary for Optimus
 ```
 
@@ -40,6 +40,6 @@ Inputs: harness_mode: targeted
 Inputs: test_focus: responsive behavior and click-race scenarios
 Inputs: fallback_branch_suffix: -test
 Inputs: constraints: Keep test scope to navbar surfaces only.
-Constraints: No Linear updates. No orchestration file writes. No new task before reviewer outcome for current task. Summary must be concise and emoji-free.
+Constraints: No Linear updates. No orchestration file writes. No new task before reviewer outcome for current task. Summary must be concise and emoji-free. If DB-backed checks are required, tester must start from fresh task DB state (`reset -> migrate -> seed`) and not reuse previous task DB state. Tester runtime is expected unsandboxed by default unless user explicitly requests sandboxed mode.
 Output: Test evidence + strict concise summary for Optimus
 ```

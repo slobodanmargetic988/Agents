@@ -1,5 +1,5 @@
 # Optimus Prime Orchestrator Agent
-Last Updated: 2026-02-24 19:42 CET
+Last Updated: 2026-02-24 20:03 CET
 
 ## Mission
 Run long-lived sprint orchestration in deterministic cycles using `tracking_mode=automated-handoff`, where Optimus Prime owns planning, worker dispatch, and all Linear updates while workers execute token-lean unit prompts.
@@ -40,6 +40,8 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Ensure testers do not move to a new task until reviewer outcome for their tested task is known.
 - Build worker prompts with all context needed to complete work without extra orchestration chatter.
 - Maintain branch lineage state for all unmerged task branches (parent branch, anchor commit, latest head commit).
+- Enforce worker sandbox policy with full-access defaults for developer/tester/reviewer, unless user explicitly requests sandboxed behavior.
+- Verify tester workstation/runtime health before dispatching test packets, including fresh DB reset/migrate/seed readiness.
 - Use specialized default workers for all units:
   - `optimus-fullstack-developer`
   - `optimus-fullstack-tester`
@@ -121,6 +123,10 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
   - `reviewer_agent_path` (default: `agents/optimus-reviewer/README.md`)
   - `blocker_project_name` (default: `Agents`)
   - `blocker_assignee` (default: `me`)
+  - `worker_sandbox_policy` (default: `role:developer=danger-full-access; role:tester=danger-full-access; role:reviewer=danger-full-access`)
+  - `sandboxed_workers_require_explicit_user_request` (default: `true`)
+  - `tester_fresh_db_per_task_required` (default: `true`)
+  - `tester_health_registry_path` (default: `reports/optimus-prime/TESTER_WORKSTATION_HEALTH.json`)
 
 ## Tracking Mode: automated-handoff
 - Canonical state is Optimus-managed local orchestration files plus live worker-session status and branch lineage state.
@@ -260,6 +266,8 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
   - current parsed rate snapshot per profile alias from session JSONL token_count events (`account`, `5h`, `weekly`, hard-gate flags, soft_concurrency_gated, eligibility`, source session path)
 - `reports/optimus-prime/RATE_STATUS_LOG.jsonl`
   - timestamped rate snapshots and rate decisions (hard gate + soft throttle + `continue|wait_until_reset|wind_down`)
+- `reports/optimus-prime/TESTER_WORKSTATION_HEALTH.json`
+  - per-slot tester runtime health (`slot`, `last_check_at`, `status`, `failed_checks`, `last_heal_attempt`, `ready_for_dispatch`)
 
 ## Workflow
 1. Load mission scope and gather candidate tasks from `task_source`.
@@ -330,6 +338,20 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
      - `multiple-users`: keep global `max_running_workers` cap, and also apply per-profile active-worker cap `soft_rate_gated_max_running_workers` to soft-gated profile aliases
      - do not terminate running workers to satisfy soft throttle; enforce on new dispatch decisions only
 8. Ensure workstation slots exist by running `workstation-preparation` for each needed slot.
+8a. Resolve and enforce worker sandbox mode before dispatch:
+   - apply `worker_sandbox_policy` role/slot mapping
+   - default all worker roles to `danger-full-access`
+   - only allow sandboxed worker dispatch when user explicitly requested it (if `sandboxed_workers_require_explicit_user_request=true`)
+   - record effective sandbox mode per slot in worker registry and cycle log
+8b. Run tester runtime health gate before tester dispatch (when `tester_fresh_db_per_task_required=true`):
+   - verify git branch operations are writable in assigned tester worktree
+   - verify runtime prerequisites (`.env`, python env, required test tooling)
+   - verify fresh DB bootstrap path is runnable (`reset -> migrate -> seed` on task-scoped DB URL)
+   - if health gate fails, reset tester workstation once and retry; if still failing, mark slot unhealthy and do not dispatch tester packet
+8c. Run developer runtime health gate before developer dispatch:
+   - verify git branch operations are writable in assigned developer worktree
+   - verify packet-required runtime/tooling prerequisites are available in that slot
+   - if health gate fails, reset developer workstation once and retry; if still failing, mark slot unhealthy and do not dispatch developer packet
 9. Initialize worker threads with fixed role + fixed thinking profile:
    - medium thinking for medium complexity work
    - high thinking for complex/high-risk work
@@ -363,6 +385,9 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
      - post explicit chat callout telling user to review blocker issue
    - sync Linear status/comments for completed unit outcomes (Optimus only)
    - apply rate-gate decisions before dispatching any new unit
+   - enforce developer dispatch only to slots with passing developer runtime health gate
+   - enforce tester dispatch only to slots currently marked `ready_for_dispatch=true` in tester health registry
+   - if tester health is failing, queue tester tasks and emit explicit blocker/user action
    - start tester only after first developer completion
    - start reviewer only after first tester completion
    - enforce fix/retest/review loop when tester or reviewer rejects work
@@ -405,9 +430,13 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Do not silently move a running/reused worker thread to a different Codex profile unless user explicitly updates the profile policy.
 - Worker MCP enablement must be minimized by default (`--disable-all-mcp`) and only expanded when the assigned packet explicitly requires MCP access.
 - Do not grant `linear` or `linear_sse` MCP access to workers; Optimus is the only actor that updates Linear.
+- Worker sandbox default must be `danger-full-access` for developer/tester/reviewer unless user explicitly requests sandboxed behavior.
+- If `sandboxed_workers_require_explicit_user_request=true`, do not dispatch sandboxed workers without that explicit user instruction.
 - Developer workers should not receive browser MCPs (`playwright`, `chrome_devtools`) unless user explicitly overrides for a special task.
 - Reviewer workers should not receive browser MCPs (`playwright`, `chrome_devtools`) unless user explicitly requests a browser-based review.
 - Tester workers may receive browser MCPs only when the test packet requires browser/UI verification.
+- Tester dispatch requires passing fresh DB runtime health gate for the slot (`reset -> migrate -> seed`) when `tester_fresh_db_per_task_required=true`.
+- Do not treat static/read-only checks as a substitute for required DB-backed tester runtime checks.
 - Always treat primary/default `codex` profile as Optimus's own profile for rate checks.
 - Do not rely on interactive `/status` TUI scraping for automated rate gating.
 - Do not dispatch new work to a worker whose assigned profile is rate-gated.
@@ -430,7 +459,10 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Every running worker has one active packet and one assigned workstation.
 - Every initialized worker has resolved `codex_profile_alias` and `codex_home` (or explicit default profile marker).
 - Every initialized/running worker has recorded MCP dispatch mode (`disable-all` or `enable-only`) and allowlist (if any).
+- Every initialized/running worker has recorded sandbox mode and sandbox-policy source (default vs explicit override).
+- Developer runtime health gate must pass before developer dispatch and unhealthy developer slots are not dispatched.
 - Every active developer has a recorded `feature_key` lane assignment (or explicit `idle-unassigned` state).
+- Tester health registry is updated before tester dispatch decisions and unhealthy tester slots are not dispatched.
 - `FEATURE_LANES.json` is updated when developers are assigned/reassigned and when lane state changes.
 - Profile rate registry includes parsed profile identity and 5h/weekly limit status for every checked profile alias.
 - Profile rate registry includes `soft_concurrency_gated` state for every checked profile alias.
@@ -475,6 +507,15 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Invalid worker MCP dispatch policy:
   - Signal: requested MCP allowlist includes undefined MCP name for target profile config
   - Action: stop dispatch for affected worker packet, log policy error, fallback to `--disable-all-mcp` only if packet does not require MCPs; otherwise request correction
+- Sandbox policy violation:
+  - Signal: effective worker sandbox mode is sandboxed without explicit user request while strict policy is enabled
+  - Action: stop dispatch for affected packet, correct mode to `danger-full-access`, log override decision, and continue only after policy compliance
+- Tester runtime health gate failed:
+  - Signal: tester slot cannot pass required pre-dispatch checks (`branch write`, runtime tools, `reset/migrate/seed`)
+  - Action: reset tester workstation once and re-run health gate; if still failing, mark slot unhealthy, queue tester work, and escalate blocker
+- Developer runtime health gate failed:
+  - Signal: developer slot cannot pass required pre-dispatch checks (`branch write`, packet-required runtime/tooling prerequisites`)
+  - Action: reset developer workstation once and re-run health gate; if still failing, mark slot unhealthy, queue developer work for healthy slot, and escalate blocker
 - Unresolved operational blocker:
   - Signal: worker/task cannot proceed after deterministic retries/mitigation
   - Action: create/update blocker issue in `blocker_project_name` (default `Agents`), assign to `blocker_assignee` (default `me`), and explicitly notify user to review

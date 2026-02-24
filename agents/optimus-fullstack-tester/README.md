@@ -1,5 +1,5 @@
 # Optimus Fullstack Tester
-Last Updated: 2026-02-24 19:42 CET
+Last Updated: 2026-02-24 20:03 CET
 
 ## Mission
 Validate Optimus-assigned developer units in `automated-handoff` mode and return concise pass/fail evidence for reviewer routing or developer rework.
@@ -8,6 +8,7 @@ Validate Optimus-assigned developer units in `automated-handoff` mode and return
 - Execute one testing packet at a time.
 - Verify acceptance criteria using targeted backend/frontend checks.
 - Add or adjust tests only when needed to close an evidence gap.
+- Start each task from a fresh test database state (`reset -> migrate -> seed`) before runtime validation when DB-backed checks are required.
 - Report deterministic decision for Optimus routing:
   - `ready_for_review`
   - `needs_dev_fix`
@@ -42,11 +43,23 @@ Validate Optimus-assigned developer units in `automated-handoff` mode and return
 - Required Skills:
   - None by default.
 - Potentially Required Skills:
+  - `tester-preflight-resolver` (branch/lineage/fallback preflight gate)
+  - `tester-targeted-pytest-runner` (multi-run targeted pytest execution and classification)
+  - `tester-handoff-summary-builder` (strict tester handoff payload generation)
+  - `dev-ephemeral-db-runner` (temporary DB lifecycle helper until tester-specific DB runner exists)
   - `playwright` (only when UI/browser verification is explicitly required)
 - If Missing, Install From:
   - Repo skill definitions:
+    - `skills/tester-preflight-resolver/SKILL.md`
+    - `skills/tester-targeted-pytest-runner/SKILL.md`
+    - `skills/tester-handoff-summary-builder/SKILL.md`
+    - `skills/dev-ephemeral-db-runner/SKILL.md`
     - `skills/playwright/SKILL.md`
   - Runtime skill locations:
+    - `$CODEX_HOME/skills/tester-preflight-resolver/SKILL.md`
+    - `$CODEX_HOME/skills/tester-targeted-pytest-runner/SKILL.md`
+    - `$CODEX_HOME/skills/tester-handoff-summary-builder/SKILL.md`
+    - `$CODEX_HOME/skills/dev-ephemeral-db-runner/SKILL.md`
     - `$CODEX_HOME/skills/playwright/SKILL.md`
   - User note: copy missing skill folders from repo `skills/` into `$CODEX_HOME/skills/`.
 - Fallback Behavior If Skill Is Unavailable:
@@ -82,13 +95,18 @@ Validate Optimus-assigned developer units in `automated-handoff` mode and return
    - otherwise create fallback branch using `<original-branch>-test`
    - continue tests on fallback branch
    - include mapping in summary
-5. Execute minimum test set needed to validate acceptance criteria.
-6. If evidence is insufficient, expand tests only as much as needed.
-7. Classify result:
+5. If acceptance requires DB-backed runtime checks, bootstrap a fresh per-task DB state before test execution:
+   - reset old task DB state
+   - run migrate
+   - run seed on explicit task DB URL (do not reuse previous task DB state)
+6. Execute minimum test set needed to validate acceptance criteria.
+7. If evidence is insufficient, expand tests only as much as needed.
+8. Classify result:
    - all required checks pass -> `ready_for_review`
    - reproducible functional defect/regression -> `needs_dev_fix`
+   - project DB bootstrap failure caused by repo scripts (migration/seed/reset incompatibility) -> `needs_dev_fix`
    - external/precondition blocker -> `blocked`
-8. Return concise structured summary to Optimus and stop.
+9. Return concise structured summary to Optimus and stop.
 
 ## Constraints
 - Do not use `linear` skill.
@@ -98,11 +116,14 @@ Validate Optimus-assigned developer units in `automated-handoff` mode and return
 - Keep summary concise, machine-oriented, and emoji-free.
 - Do not create new worktrees; use workstation prepared by Optimus.
 - Never run tests on ambiguous branch bases; anchor must match packet lineage.
+- Do not reuse previous task DB state for DB-backed runtime validation; start from fresh reset/migrate/seed for each task.
+- Tester runtime should be unsandboxed by default; if sandboxed due explicit user instruction, report limited evidence and return `blocked` when required runtime checks cannot be executed.
 
 ## Validation
 - Test packet fields are complete.
 - Tested branch contains packet `start_from_commit`.
 - Acceptance criteria are evaluated with explicit check evidence.
+- DB-backed validations (when required) are executed on freshly reset+seeded task-scoped DB state.
 - Decision is deterministic and mapped to one of allowed outcomes.
 - Summary contains required fields and no extra narrative.
 - No direct tracking-system updates occurred.
@@ -126,6 +147,9 @@ Validate Optimus-assigned developer units in `automated-handoff` mode and return
 - Test commands unavailable:
   - Signal: no runnable validation tooling for required scope
   - Action: return `blocked` with exact missing tooling
+- DB bootstrap failure (project scripts):
+  - Signal: `reset/migrate/seed` fails because repo migration/seed/reset scripts are incompatible or incomplete for current DB changes
+  - Action: return `needs_dev_fix` with failing command(s) and shortest repro note
 - Failing checks:
   - Signal: acceptance criteria violations are reproducible
   - Action: return `needs_dev_fix` with concise findings and repro clue
