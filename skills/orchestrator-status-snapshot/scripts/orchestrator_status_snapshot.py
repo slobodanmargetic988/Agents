@@ -701,7 +701,7 @@ def generate_snapshot(config: InputConfig) -> dict[str, Any]:
             "handoff": handoff_hist,
         }
 
-    if config.output_mode == "json+text":
+    if config.output_mode in {"json+text", "text"}:
         snapshot["text_summary"] = build_text_summary(snapshot)
         snapshot["status_text"] = build_status_text(snapshot)
 
@@ -719,7 +719,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-history-items", type=int, default=5)
     parser.add_argument("--include-process-check", dest="include_process_check", action="store_true", default=True)
     parser.add_argument("--no-process-check", dest="include_process_check", action="store_false")
-    parser.add_argument("--output-mode", choices=["json", "json+text"], default="json")
+    parser.add_argument("--output-mode", choices=["json", "json+text", "text"], default="json")
     parser.add_argument("--json-pretty", action="store_true")
     return parser.parse_args()
 
@@ -760,8 +760,8 @@ def build_config(args: argparse.Namespace) -> InputConfig:
         include_process_check = False
 
     output_mode = as_str(json_input.get("output_mode")) or args.output_mode
-    if output_mode not in {"json", "json+text"}:
-        raise ValueError("output_mode must be one of: json, json+text")
+    if output_mode not in {"json", "json+text", "text"}:
+        raise ValueError("output_mode must be one of: json, json+text, text")
 
     return InputConfig(
         repo_root=Path(repo_root_raw).expanduser().resolve(),
@@ -781,7 +781,9 @@ def main() -> int:
         return 2
 
     snapshot = generate_snapshot(config)
-    if args.json_pretty:
+    if config.output_mode == "text":
+        print(snapshot.get("status_text") or "")
+    elif args.json_pretty:
         print(json.dumps(snapshot, indent=2, sort_keys=False))
     else:
         print(json.dumps(snapshot, separators=(",", ":"), sort_keys=False))
