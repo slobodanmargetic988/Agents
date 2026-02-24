@@ -512,11 +512,14 @@ def remediation_block(cfg: DispatchInput, pid: int) -> dict[str, Any]:
 
 
 def build_result(cfg: DispatchInput, packet: Path) -> dict[str, Any]:
+    cycle_note_state = "pending" if cfg.cycle_note else "not_requested"
     return {
         "schema_version": SCHEMA_VERSION,
         "tool": TOOL,
         "tool_version": TOOL_VERSION,
         "ok": False,
+        "dry_run": bool(cfg.dry_run),
+        "status": "not_started",
         "slot": cfg.slot,
         "role": cfg.role,
         "task_identifier": cfg.task_identifier,
@@ -524,6 +527,18 @@ def build_result(cfg: DispatchInput, packet: Path) -> dict[str, Any]:
         "dispatch_started": False,
         "pid": None,
         "dispatch_log": None,
+        "dispatch": {
+            "attempted": False,
+            "status": "not_started",
+            "pid": None,
+            "dispatch_log": None,
+        },
+        "state_updates": {
+            "worker_registry": "not_started",
+            "handoff_log": "not_started",
+            "branch_lineage": "not_started",
+            "cycle_log_note": cycle_note_state,
+        },
         "branch": cfg.branch_name,
         "start_anchor": {
             "start_from_branch": cfg.start_from_branch,
@@ -546,6 +561,19 @@ def run_dispatch_worker_packet(cfg: DispatchInput, dispatcher: Dispatcher | None
     packet_content = render_packet(cfg)
     if cfg.dry_run:
         result["ok"] = True
+        result["status"] = "skipped_dry_run"
+        result["dispatch"] = {
+            "attempted": False,
+            "status": "skipped_dry_run",
+            "pid": None,
+            "dispatch_log": None,
+        }
+        result["state_updates"] = {
+            "worker_registry": "skipped_dry_run",
+            "handoff_log": "skipped_dry_run",
+            "branch_lineage": "skipped_dry_run",
+            "cycle_log_note": "skipped_dry_run" if cfg.cycle_note else "not_requested",
+        }
         result["warnings"].append(
             {
                 "code": "dry_run",
@@ -565,6 +593,7 @@ def run_dispatch_worker_packet(cfg: DispatchInput, dispatcher: Dispatcher | None
     try:
         write_text_file(packet, packet_content)
     except OSError as exc:
+        result["status"] = "packet_create_failed"
         result["errors"].append(
             {
                 "code": "packet_create_failed",
@@ -578,12 +607,22 @@ def run_dispatch_worker_packet(cfg: DispatchInput, dispatcher: Dispatcher | None
     try:
         dispatch = dispatcher.dispatch(cfg, packet)
     except ToolError as exc:
+        result["status"] = "dispatch_failed"
+        result["dispatch"]["attempted"] = True
+        result["dispatch"]["status"] = "failed"
         result["errors"].append({"code": exc.code, "message": exc.message, "stage": exc.stage})
         return result
 
     result["dispatch_started"] = bool(dispatch["dispatch_started"])
     result["pid"] = int(dispatch["pid"])
     result["dispatch_log"] = str(dispatch["dispatch_log"])
+    result["dispatch"] = {
+        "attempted": True,
+        "status": "started" if dispatch["dispatch_started"] else "failed",
+        "pid": int(dispatch["pid"]),
+        "dispatch_log": str(dispatch["dispatch_log"]),
+    }
+    result["status"] = "dispatch_started" if dispatch["dispatch_started"] else "dispatch_failed"
 
     reports_root = cfg.repo_root / "reports" / "optimus-prime"
     registry_path = reports_root / "WORKER_REGISTRY.json"
@@ -594,8 +633,11 @@ def run_dispatch_worker_packet(cfg: DispatchInput, dispatcher: Dispatcher | None
     try:
         update_worker_registry(registry_path, cfg, packet, dispatch)
         result["registry_updated"] = True
+        result["state_updates"]["worker_registry"] = "applied"
     except (ToolError, OSError) as exc:
         msg = exc.message if isinstance(exc, ToolError) else str(exc)
+        result["status"] = "registry_update_failed"
+        result["state_updates"]["worker_registry"] = "failed"
         result["errors"].append(
             {
                 "code": "registry_update_failed",
@@ -632,7 +674,10 @@ def run_dispatch_worker_packet(cfg: DispatchInput, dispatcher: Dispatcher | None
     try:
         append_jsonl(handoff_path, handoff_row)
         result["handoff_logged"] = True
+        result["state_updates"]["handoff_log"] = "applied"
     except OSError as exc:
+        result["status"] = "handoff_log_failed"
+        result["state_updates"]["handoff_log"] = "failed"
         result["errors"].append(
             {
                 "code": "handoff_log_failed",
@@ -645,8 +690,10 @@ def run_dispatch_worker_packet(cfg: DispatchInput, dispatcher: Dispatcher | None
 
     try:
         update_branch_lineage(lineage_path, cfg, dispatch)
+        result["state_updates"]["branch_lineage"] = "applied"
     except (ToolError, OSError) as exc:
         msg = exc.message if isinstance(exc, ToolError) else str(exc)
+        result["state_updates"]["branch_lineage"] = "failed_warning"
         result["warnings"].append(
             {
                 "code": "branch_lineage_update_failed",
@@ -666,7 +713,9 @@ def run_dispatch_worker_packet(cfg: DispatchInput, dispatcher: Dispatcher | None
         }
         try:
             append_jsonl(cycle_path, cycle_row)
+            result["state_updates"]["cycle_log_note"] = "applied"
         except OSError as exc:
+            result["state_updates"]["cycle_log_note"] = "failed_warning"
             result["warnings"].append(
                 {
                     "code": "cycle_log_note_failed",
@@ -677,6 +726,8 @@ def run_dispatch_worker_packet(cfg: DispatchInput, dispatcher: Dispatcher | None
             )
 
     result["ok"] = len(result["errors"]) == 0
+    if result["ok"]:
+        result["status"] = "completed"
     return result
 
 
