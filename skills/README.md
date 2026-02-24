@@ -24,6 +24,7 @@ This folder stores portable skill definitions used by agents in this repository.
 - `speech`
 - `spreadsheet`
 - `tester-preflight-resolver`
+- `tester-targeted-pytest-runner`
 - `skill-creator`
 - `skill-installer`
 - `thread-dispatch`
