@@ -1,6 +1,7 @@
 # Examples
 
 Use these examples as starting points. Review and adapt task scope, worker caps, branch policy, and mission target to your own repository and workflow.
+For multi-project setups, include `Inputs: worktrees_parent: <repo-parent>/.<repo-name>-workstations` so workstation slots are isolated per repo and hidden by default.
 
 ## Example 1: Finish First 20 Tasks With Adaptive Dev Capacity
 

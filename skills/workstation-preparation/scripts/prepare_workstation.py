@@ -4,11 +4,12 @@
 from __future__ import annotations
 
 import argparse
+import json
+import re
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-import re
 
 
 MAX_WORKSTATIONS = 10
@@ -23,11 +24,6 @@ class WorktreeEntry:
 
 def run(cmd: list[str], check: bool = True) -> subprocess.CompletedProcess[str]:
     return subprocess.run(cmd, check=check, text=True, capture_output=True)
-
-
-def fail(message: str) -> int:
-    print(f"[workstation] error: {message}", file=sys.stderr)
-    return 2
 
 
 def git_root(repo_input: str) -> Path:
@@ -74,6 +70,10 @@ def slot_name_for_path(path: Path) -> str | None:
     return name if SLOT_RE.fullmatch(name) else None
 
 
+def slot_sort_key(slot_name: str) -> int:
+    return int(slot_name.rsplit("-", 1)[1])
+
+
 def default_base_ref(repo_root: Path) -> str:
     result = run(
         ["git", "-C", str(repo_root), "symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"],
@@ -82,6 +82,10 @@ def default_base_ref(repo_root: Path) -> str:
     if result.returncode == 0 and result.stdout.strip():
         return result.stdout.strip()
     return "HEAD"
+
+
+def default_worktrees_parent(repo_root: Path) -> Path:
+    return (repo_root.parent / f"{repo_root.name}-workstations").resolve()
 
 
 def revlist_count(repo_path: Path, revspec: str, right_only: bool) -> int:
@@ -117,6 +121,133 @@ def working_tree_dirty(worktree_path: Path) -> bool:
     return bool(result.stdout.strip())
 
 
+def checked_out_paths(
+    all_worktrees: list[WorktreeEntry],
+    branch_name: str,
+    exclude_path: Path | None = None,
+) -> list[Path]:
+    conflicts: list[Path] = []
+    for entry in all_worktrees:
+        if entry.branch != branch_name:
+            continue
+        if exclude_path is not None and entry.path == exclude_path:
+            continue
+        conflicts.append(entry.path)
+    return conflicts
+
+
+def resolve_branch_name(
+    *,
+    requested_branch: str,
+    all_worktrees: list[WorktreeEntry],
+    repo_root: Path,
+    exclude_path: Path | None,
+    fallback_suffix: str | None,
+    allow_existing_branch_ref: bool,
+) -> tuple[str, bool, list[str], str | None]:
+    conflicts = checked_out_paths(all_worktrees, requested_branch, exclude_path)
+    if not conflicts:
+        return requested_branch, False, [], None
+
+    conflict_paths = [str(path) for path in conflicts]
+    if not fallback_suffix:
+        return requested_branch, False, conflict_paths, None
+
+    suffix = fallback_suffix.strip()
+    if not suffix or any(ch.isspace() for ch in suffix):
+        return requested_branch, False, conflict_paths, "fallback suffix must be non-empty and contain no whitespace"
+
+    base_candidate = f"{requested_branch}{suffix}"
+    for idx in range(0, 100):
+        candidate = base_candidate if idx == 0 else f"{base_candidate}-{idx + 1}"
+        candidate_conflicts = checked_out_paths(all_worktrees, candidate, exclude_path)
+        if candidate_conflicts:
+            continue
+        if branch_exists(repo_root, candidate) and not allow_existing_branch_ref:
+            continue
+        return candidate, True, conflict_paths, None
+
+    return requested_branch, False, conflict_paths, "could not resolve unique fallback branch after 100 attempts"
+
+
+def payload_base(
+    *,
+    repo_root: Path,
+    base_ref: str,
+    managed_count: int,
+    output_mode: str,
+    dry_run: bool,
+) -> dict[str, object]:
+    return {
+        "repo_root": str(repo_root),
+        "base_ref": base_ref,
+        "managed_slots": managed_count,
+        "max_workstations": MAX_WORKSTATIONS,
+        "output": output_mode,
+        "dry_run": dry_run,
+    }
+
+
+def emit_text(payload: dict[str, object]) -> None:
+    if payload.get("ok"):
+        print(f"[workstation] repo_root={payload.get('repo_root')}")
+        print(f"[workstation] base_ref={payload.get('base_ref')}")
+        print(f"[workstation] managed_slots={payload.get('managed_slots')}/{payload.get('max_workstations')}")
+        if payload.get("worktree_name"):
+            print(f"[workstation] worktree_name={payload.get('worktree_name')}")
+        if payload.get("target_path"):
+            print(f"[workstation] target_path={payload.get('target_path')}")
+        if payload.get("branch_name_resolved"):
+            print(f"[workstation] branch_name={payload.get('branch_name_resolved')}")
+        if payload.get("branch_fallback_applied"):
+            print(
+                "[workstation] branch_fallback="
+                f"requested={payload.get('branch_name_requested')} resolved={payload.get('branch_name_resolved')}"
+            )
+        if payload.get("branch_conflict_paths"):
+            print(
+                "[workstation] branch_conflict_paths=" + ",".join(payload.get("branch_conflict_paths", []))
+            )
+        if payload.get("repair_results"):
+            for item in payload.get("repair_results", []):
+                print(
+                    "[workstation] repair "
+                    f"slot={item.get('worktree_name')} branch={item.get('branch_name_resolved')} "
+                    f"status={item.get('status')}"
+                )
+        if payload.get("message"):
+            print(f"[workstation] {payload.get('message')}")
+        return
+
+    if payload.get("repo_root"):
+        print(f"[workstation] repo_root={payload.get('repo_root')}")
+    if payload.get("worktree_name"):
+        print(f"[workstation] worktree_name={payload.get('worktree_name')}")
+    if payload.get("branch_name_requested"):
+        print(f"[workstation] branch_name={payload.get('branch_name_requested')}")
+    if payload.get("base_ref"):
+        print(f"[workstation] base_ref={payload.get('base_ref')}")
+    if payload.get("target_path"):
+        print(f"[workstation] target_path={payload.get('target_path')}")
+    if payload.get("managed_slots") is not None and payload.get("max_workstations") is not None:
+        print(f"[workstation] managed_slots={payload.get('managed_slots')}/{payload.get('max_workstations')}")
+    print(f"[workstation] error: {payload.get('error')}", file=sys.stderr)
+
+
+def emit(payload: dict[str, object], output_mode: str) -> int:
+    if output_mode == "json":
+        print(json.dumps(payload, sort_keys=True))
+    else:
+        emit_text(payload)
+    return 0 if payload.get("ok") else 2
+
+
+def fail(message: str, output_mode: str, context: dict[str, object]) -> int:
+    payload = dict(context)
+    payload.update({"ok": False, "error": message})
+    return emit(payload, output_mode)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Prepare workstation worktrees with a hard max-10 gate.")
     parser.add_argument(
@@ -134,7 +265,10 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--worktrees-parent",
-        help="parent directory for new worktrees (default: parent of repo root)",
+        help=(
+            "parent directory for new worktrees "
+            "(default: <repo-parent>/<repo-name>-workstations)"
+        ),
     )
     parser.add_argument(
         "--base-ref",
@@ -144,6 +278,24 @@ def parse_args() -> argparse.Namespace:
         "--force-reset-existing",
         action="store_true",
         help="allow destructive reset for existing dirty/diverged slots",
+    )
+    parser.add_argument(
+        "--branch-in-use-fallback-suffix",
+        help=(
+            "suffix to append when requested branch is already checked out in another worktree "
+            "(for example '-dev' or '-test')"
+        ),
+    )
+    parser.add_argument(
+        "--repair-all-existing",
+        action="store_true",
+        help="reset all managed workstation slots in one run",
+    )
+    parser.add_argument(
+        "--output",
+        choices=["text", "json"],
+        default="text",
+        help="output mode for orchestrator parsing (default: text)",
     )
     parser.add_argument(
         "--dry-run",
@@ -160,7 +312,13 @@ def main() -> int:
         repo_root = git_root(args.repo_root)
         all_worktrees = list_worktrees(repo_root)
     except Exception as exc:  # noqa: BLE001
-        return fail(str(exc))
+        return emit(
+            {
+                "ok": False,
+                "error": str(exc),
+            },
+            args.output,
+        )
 
     managed_slots: dict[str, WorktreeEntry] = {}
     for entry in all_worktrees:
@@ -168,12 +326,117 @@ def main() -> int:
         if not slot:
             continue
         if slot in managed_slots:
-            return fail(f"duplicate managed slot detected for {slot}")
+            context = payload_base(
+                repo_root=repo_root,
+                base_ref=args.base_ref or default_base_ref(repo_root),
+                managed_count=len(managed_slots),
+                output_mode=args.output,
+                dry_run=args.dry_run,
+            )
+            return fail(f"duplicate managed slot detected for {slot}", args.output, context)
         managed_slots[slot] = entry
+
+    base_ref = args.base_ref or default_base_ref(repo_root)
+    context_common = payload_base(
+        repo_root=repo_root,
+        base_ref=base_ref,
+        managed_count=len(managed_slots),
+        output_mode=args.output,
+        dry_run=args.dry_run,
+    )
+
+    if args.repair_all_existing:
+        if args.worktree_name:
+            return fail("--repair-all-existing cannot be combined with --worktree-name", args.output, context_common)
+        if args.branch_name:
+            return fail("--repair-all-existing cannot be combined with --branch-name", args.output, context_common)
+        if not managed_slots:
+            return fail("no managed workstation slots found to repair", args.output, context_common)
+        if not args.force_reset_existing and not args.dry_run:
+            return fail(
+                "--repair-all-existing is destructive; pass --force-reset-existing or use --dry-run",
+                args.output,
+                context_common,
+            )
+
+        repair_results: list[dict[str, object]] = []
+        for slot in sorted(managed_slots.keys(), key=slot_sort_key):
+            entry = managed_slots[slot]
+            requested_branch = entry.branch or slot
+            resolved_branch, fallback_used, conflict_paths, resolution_error = resolve_branch_name(
+                requested_branch=requested_branch,
+                all_worktrees=all_worktrees,
+                repo_root=repo_root,
+                exclude_path=entry.path,
+                fallback_suffix=args.branch_in_use_fallback_suffix,
+                allow_existing_branch_ref=True,
+            )
+            if resolution_error:
+                return fail(
+                    f"slot '{slot}' branch resolution failed: {resolution_error}",
+                    args.output,
+                    {
+                        **context_common,
+                        "worktree_name": slot,
+                        "target_path": str(entry.path),
+                        "branch_name_requested": requested_branch,
+                        "branch_conflict_paths": conflict_paths,
+                    },
+                )
+            if conflict_paths and not fallback_used:
+                return fail(
+                    f"slot '{slot}' branch '{requested_branch}' is checked out elsewhere; "
+                    "set --branch-in-use-fallback-suffix to auto-resolve",
+                    args.output,
+                    {
+                        **context_common,
+                        "worktree_name": slot,
+                        "target_path": str(entry.path),
+                        "branch_name_requested": requested_branch,
+                        "branch_conflict_paths": conflict_paths,
+                    },
+                )
+
+            item_result: dict[str, object] = {
+                "worktree_name": slot,
+                "target_path": str(entry.path),
+                "branch_name_requested": requested_branch,
+                "branch_name_resolved": resolved_branch,
+                "branch_fallback_applied": fallback_used,
+                "branch_conflict_paths": conflict_paths,
+                "status": "dry_run" if args.dry_run else "prepared",
+            }
+            if not args.dry_run:
+                try:
+                    run(["git", "-C", str(entry.path), "checkout", "-B", resolved_branch, base_ref], check=True)
+                    run(["git", "-C", str(entry.path), "reset", "--hard", base_ref], check=True)
+                    run(["git", "-C", str(entry.path), "clean", "-fd"], check=True)
+                except subprocess.CalledProcessError as exc:
+                    return fail(
+                        exc.stderr.strip() or str(exc),
+                        args.output,
+                        {**context_common, **item_result},
+                    )
+            repair_results.append(item_result)
+
+        return emit(
+            {
+                **context_common,
+                "ok": True,
+                "action": "repair_all_existing",
+                "repair_results": repair_results,
+                "message": (
+                    "dry-run: would reset all managed slots"
+                    if args.dry_run
+                    else "all managed slots prepared in clean state"
+                ),
+            },
+            args.output,
+        )
 
     if args.worktree_name:
         if not SLOT_RE.fullmatch(args.worktree_name):
-            return fail("worktree name must be workstation-1 through workstation-10")
+            return fail("worktree name must be workstation-1 through workstation-10", args.output, context_common)
         worktree_name = args.worktree_name
     else:
         worktree_name = ""
@@ -183,37 +446,74 @@ def main() -> int:
                 worktree_name = candidate
                 break
         if not worktree_name:
-            return fail("all workstation slots are occupied; max is 10")
+            return fail("all workstation slots are occupied; max is 10", args.output, context_common)
 
-    branch_name = args.branch_name or worktree_name
-    if not branch_name.strip() or any(ch.isspace() for ch in branch_name):
-        return fail("branch name must be non-empty and cannot contain whitespace")
+    branch_name_requested = args.branch_name or worktree_name
+    if not branch_name_requested.strip() or any(ch.isspace() for ch in branch_name_requested):
+        return fail("branch name must be non-empty and cannot contain whitespace", args.output, context_common)
 
     existing_slot = managed_slots.get(worktree_name)
     managed_count = len(managed_slots)
     if existing_slot is None and managed_count >= MAX_WORKSTATIONS:
-        return fail("max workstation limit reached (10); refusing to create additional worktrees")
+        return fail("max workstation limit reached (10); refusing to create additional worktrees", args.output, context_common)
 
-    base_ref = args.base_ref or default_base_ref(repo_root)
-    parent_dir = Path(args.worktrees_parent).resolve() if args.worktrees_parent else repo_root.parent.resolve()
+    parent_dir = Path(args.worktrees_parent).resolve() if args.worktrees_parent else default_worktrees_parent(repo_root)
     target_path = existing_slot.path if existing_slot else (parent_dir / worktree_name).resolve()
 
-    print(f"[workstation] repo_root={repo_root}")
-    print(f"[workstation] worktree_name={worktree_name}")
-    print(f"[workstation] branch_name={branch_name}")
-    print(f"[workstation] base_ref={base_ref}")
-    print(f"[workstation] target_path={target_path}")
-    print(f"[workstation] managed_slots={managed_count}/{MAX_WORKSTATIONS}")
+    branch_name_resolved, fallback_used, conflict_paths, resolution_error = resolve_branch_name(
+        requested_branch=branch_name_requested,
+        all_worktrees=all_worktrees,
+        repo_root=repo_root,
+        exclude_path=target_path if existing_slot else None,
+        fallback_suffix=args.branch_in_use_fallback_suffix,
+        allow_existing_branch_ref=args.force_reset_existing,
+    )
+    if resolution_error:
+        return fail(
+            resolution_error,
+            args.output,
+            {
+                **context_common,
+                "worktree_name": worktree_name,
+                "target_path": str(target_path),
+                "branch_name_requested": branch_name_requested,
+                "branch_conflict_paths": conflict_paths,
+            },
+        )
+
+    if conflict_paths and not fallback_used:
+        return fail(
+            f"branch '{branch_name_requested}' is checked out in another worktree; "
+            "set --branch-in-use-fallback-suffix to auto-resolve",
+            args.output,
+            {
+                **context_common,
+                "worktree_name": worktree_name,
+                "target_path": str(target_path),
+                "branch_name_requested": branch_name_requested,
+                "branch_conflict_paths": conflict_paths,
+            },
+        )
+
+    context = {
+        **context_common,
+        "worktree_name": worktree_name,
+        "target_path": str(target_path),
+        "branch_name_requested": branch_name_requested,
+        "branch_name_resolved": branch_name_resolved,
+        "branch_fallback_applied": fallback_used,
+        "branch_conflict_paths": conflict_paths,
+    }
 
     if existing_slot:
         try:
             dirty = working_tree_dirty(target_path)
             head_ahead = revlist_count(target_path, f"{base_ref}...HEAD", right_only=True)
             branch_ahead = 0
-            if branch_exists(target_path, branch_name):
-                branch_ahead = revlist_count(target_path, f"{base_ref}...{branch_name}", right_only=True)
+            if branch_exists(target_path, branch_name_resolved):
+                branch_ahead = revlist_count(target_path, f"{base_ref}...{branch_name_resolved}", right_only=True)
         except Exception as exc:  # noqa: BLE001
-            return fail(str(exc))
+            return fail(str(exc), args.output, context)
 
         needs_force = dirty or head_ahead > 0 or branch_ahead > 0
         if needs_force and not args.force_reset_existing:
@@ -223,35 +523,63 @@ def main() -> int:
             if head_ahead > 0:
                 details.append(f"HEAD is ahead of {base_ref} by {head_ahead} commit(s)")
             if branch_ahead > 0:
-                details.append(f"branch '{branch_name}' is ahead of {base_ref} by {branch_ahead} commit(s)")
+                details.append(
+                    f"branch '{branch_name_resolved}' is ahead of {base_ref} by {branch_ahead} commit(s)"
+                )
             return fail(
-                "existing slot requires reset but --force-reset-existing is not set: "
-                + "; ".join(details)
+                "existing slot requires reset but --force-reset-existing is not set: " + "; ".join(details),
+                args.output,
+                context,
             )
 
         if args.dry_run:
-            print("[workstation] dry-run: would reset existing slot")
-            return 0
+            return emit(
+                {
+                    **context,
+                    "ok": True,
+                    "action": "reset_existing_slot",
+                    "message": "dry-run: would reset existing slot",
+                },
+                args.output,
+            )
 
         try:
-            run(["git", "-C", str(target_path), "checkout", "-B", branch_name, base_ref], check=True)
+            run(["git", "-C", str(target_path), "checkout", "-B", branch_name_resolved, base_ref], check=True)
             run(["git", "-C", str(target_path), "reset", "--hard", base_ref], check=True)
             run(["git", "-C", str(target_path), "clean", "-fd"], check=True)
         except subprocess.CalledProcessError as exc:
-            return fail(exc.stderr.strip() or str(exc))
+            return fail(exc.stderr.strip() or str(exc), args.output, context)
 
-        print("[workstation] existing slot prepared in clean state")
-        return 0
+        return emit(
+            {
+                **context,
+                "ok": True,
+                "action": "reset_existing_slot",
+                "message": "existing slot prepared in clean state",
+            },
+            args.output,
+        )
 
     if target_path.exists():
-        return fail(f"target path already exists and is not a managed slot: {target_path}")
+        return fail(f"target path already exists and is not a managed slot: {target_path}", args.output, context)
 
-    branch_already_exists = branch_exists(repo_root, branch_name)
+    if not parent_dir.exists():
+        if args.dry_run:
+            pass
+        else:
+            try:
+                parent_dir.mkdir(parents=True, exist_ok=True)
+            except OSError as exc:
+                return fail(f"unable to create worktrees parent directory {parent_dir}: {exc}", args.output, context)
+    elif not parent_dir.is_dir():
+        return fail(f"worktrees parent path is not a directory: {parent_dir}", args.output, context)
+
+    branch_already_exists = branch_exists(repo_root, branch_name_resolved)
     if branch_already_exists:
         try:
-            branch_ahead, branch_behind = branch_divergence(repo_root, base_ref, branch_name)
+            branch_ahead, branch_behind = branch_divergence(repo_root, base_ref, branch_name_resolved)
         except Exception as exc:  # noqa: BLE001
-            return fail(str(exc))
+            return fail(str(exc), args.output, context)
         if not args.force_reset_existing:
             divergence_note = (
                 f" (ahead {branch_ahead}, behind {branch_behind} vs {base_ref})"
@@ -259,16 +587,27 @@ def main() -> int:
                 else ""
             )
             return fail(
-                f"branch '{branch_name}' already exists{divergence_note}; "
-                "refusing to reset existing branch without --force-reset-existing"
+                f"branch '{branch_name_resolved}' already exists{divergence_note}; "
+                "refusing to reset existing branch without --force-reset-existing",
+                args.output,
+                context,
             )
 
     if args.dry_run:
-        if branch_already_exists:
-            print("[workstation] dry-run: would create new slot and force-reset existing branch ref")
-        else:
-            print("[workstation] dry-run: would create new slot")
-        return 0
+        message = (
+            "dry-run: would create new slot and force-reset existing branch ref"
+            if branch_already_exists
+            else "dry-run: would create new slot"
+        )
+        return emit(
+            {
+                **context,
+                "ok": True,
+                "action": "create_new_slot",
+                "message": message,
+            },
+            args.output,
+        )
 
     add_args = [
         "git",
@@ -279,17 +618,24 @@ def main() -> int:
         str(target_path),
     ]
     if branch_already_exists:
-        add_args.extend(["-B", branch_name, base_ref])
+        add_args.extend(["-B", branch_name_resolved, base_ref])
     else:
-        add_args.extend(["-b", branch_name, base_ref])
+        add_args.extend(["-b", branch_name_resolved, base_ref])
 
     try:
         run(add_args, check=True)
     except subprocess.CalledProcessError as exc:
-        return fail(exc.stderr.strip() or str(exc))
+        return fail(exc.stderr.strip() or str(exc), args.output, context)
 
-    print("[workstation] new slot created")
-    return 0
+    return emit(
+        {
+            **context,
+            "ok": True,
+            "action": "create_new_slot",
+            "message": "new slot created",
+        },
+        args.output,
+    )
 
 
 if __name__ == "__main__":

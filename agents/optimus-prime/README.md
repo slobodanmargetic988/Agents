@@ -9,6 +9,7 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Group units by feature and prefer feature-parallel development lanes (one developer per active feature when possible).
 - Run orchestration in repeating 5-minute cycles.
 - Initialize workstation slots with `workstation-preparation` skill before worker launch.
+- Always pass explicit `--worktrees-parent` to `workstation-preparation`; use hidden per-repo workstation root by default.
 - Maintain worker registry with fixed role + fixed thinking profile per thread (`medium` or `high`) and reuse threads in that mode.
 - Maintain fixed Codex profile assignment per worker thread (for example `codex`, `codex-second`, `codex-third`) unless user explicitly changes it.
 - Dispatch worker threads with minimum required MCP servers enabled (default deny; enable only what the unit needs).
@@ -68,6 +69,7 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
   - `worktree_policy_path` (default: `agents/_shared/WORKTREE_POLICY.md`)
   - `linear_workflow_path` (default: `agents/_shared/LINEAR_WORKFLOW.md`)
   - `sleep_minutes` (default: `5`)
+  - `worktrees_parent` (default: derived from `repo_root` as `<repo-parent>/.<repo-name>-workstations`)
   - `max_initialized_workers` (default: `10`)
   - `max_running_workers` (default: `6`)
   - `worker_registry_path` (default: `reports/optimus-prime/WORKER_REGISTRY.json`)
@@ -372,22 +374,27 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
      - single profile or `single-user`: if soft-gated, reduce effective `max_running_workers` to `soft_rate_gated_max_running_workers`
      - `multiple-users`: keep global `max_running_workers` cap, and also apply per-profile active-worker cap `soft_rate_gated_max_running_workers` to soft-gated profile aliases
      - do not terminate running workers to satisfy soft throttle; enforce on new dispatch decisions only
-8. Ensure workstation slots exist by running `workstation-preparation` for each needed slot.
-8a. Resolve and enforce worker sandbox mode before dispatch:
+8. Resolve workstation parent path for slot preparation:
+   - if `worktrees_parent` input is set, use it as-is
+   - otherwise derive hidden per-repo path from `repo_root`: `<repo-parent>/.<repo-name>-workstations`
+   - pass explicit `--worktrees-parent <resolved_path>` on every `workstation-preparation` call
+   - do not rely on skill default parent selection
+9. Ensure workstation slots exist by running `workstation-preparation` for each needed slot.
+9a. Resolve and enforce worker sandbox mode before dispatch:
    - apply `worker_sandbox_policy` role/slot mapping
    - default all worker roles to `danger-full-access`
    - only allow sandboxed worker dispatch when user explicitly requested it (if `sandboxed_workers_require_explicit_user_request=true`)
    - record effective sandbox mode per slot in worker registry and cycle log
-8b. Run tester runtime health gate before tester dispatch (when `tester_fresh_db_per_task_required=true`):
+9b. Run tester runtime health gate before tester dispatch (when `tester_fresh_db_per_task_required=true`):
    - verify git branch operations are writable in assigned tester worktree
    - verify runtime prerequisites (`.env`, python env, required test tooling)
    - verify fresh DB bootstrap path is runnable (`reset -> migrate -> seed` on task-scoped DB URL)
    - if health gate fails, reset tester workstation once and retry; if still failing, mark slot unhealthy and do not dispatch tester packet
-8c. Run developer runtime health gate before developer dispatch:
+9c. Run developer runtime health gate before developer dispatch:
    - verify git branch operations are writable in assigned developer worktree
    - verify packet-required runtime/tooling prerequisites are available in that slot
    - if health gate fails, reset developer workstation once and retry; if still failing, mark slot unhealthy and do not dispatch developer packet
-9. Initialize worker threads with fixed role + fixed thinking profile:
+10. Initialize worker threads with fixed role + fixed thinking profile:
    - medium thinking for medium complexity work
    - high thinking for complex/high-risk work
    - worker definitions:
@@ -400,17 +407,17 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
    - worker MCP enablement:
      - use thread-dispatch `--disable-all-mcp` by default
      - use thread-dispatch `--enable-only-mcp` when packet requires specific MCPs
-10. Record all initialized threads in `WORKER_REGISTRY.json` and mark run-state.
-10a. Persist worker thread identity:
+11. Record all initialized threads in `WORKER_REGISTRY.json` and mark run-state.
+11a. Persist worker thread identity:
    - capture `session_id` from thread-dispatch response/log for every dispatch attempt
    - write `session_id` into slot record in `WORKER_REGISTRY.json`
    - include `session_id` in `HANDOFF_LOG.jsonl` dispatch events when available
-10b. Record/update feature lane state in `FEATURE_LANES.json`:
+11b. Record/update feature lane state in `FEATURE_LANES.json`:
    - assigned developer slot per feature
    - lane blocked/active status
    - reassignment reason when a developer changes feature lane
-11. Dispatch first developer unit packet via `dispatch-worker-packet` and start cycle loop.
-12. At each cycle:
+12. Dispatch first developer unit packet via `dispatch-worker-packet` and start cycle loop.
+13. At each cycle:
    - generate current control view via `orchestrator-status-snapshot` (worker/cycle/handoff/rate state)
    - evaluate dispatch/sleep action via `cycle-tick` before assigning new units
    - ingest worker outputs and session health
@@ -434,7 +441,7 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
    - keep one-task-at-a-time per developer until review pass
    - keep developer feature affinity stable unless lane is complete/blocked or user steering requests reassignment
    - keep testers waiting on reviewer outcome for their active task
-13. Before sleep, post concise control update in orchestrator chat:
+14. Before sleep, post concise control update in orchestrator chat:
    - prefer `orchestrator-status-snapshot --format text` output directly in chat
    - active workers
    - idle workers
@@ -448,10 +455,10 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
    - current branch lineage anchors for active tasks
    - blockers and planned next dispatch
    - close line: `jobs handed out going back to napping for a while`
-14. Sleep `5` minutes using `sleep` skill unless user steering is active or a shorter sleep-until-reset is required by rate logic.
-15. If user sends steering commands, skip sleep, apply steering, then resume cycle mode.
-16. Every few cycles, run identity checkpoint refresh from `IDENTITY_CHECKPOINT.md` and continue.
-17. End only when `primary_mission` completion criteria are fully satisfied or a rate-policy wind-down stop condition is reached.
+15. Sleep `5` minutes using `sleep` skill unless user steering is active or a shorter sleep-until-reset is required by rate logic.
+16. If user sends steering commands, skip sleep, apply steering, then resume cycle mode.
+17. Every few cycles, run identity checkpoint refresh from `IDENTITY_CHECKPOINT.md` and continue.
+18. End only when `primary_mission` completion criteria are fully satisfied or a rate-policy wind-down stop condition is reached.
 
 ## Constraints
 - `tracking_mode` must remain `automated-handoff` for worker operations.
@@ -466,6 +473,9 @@ Run long-lived sprint orchestration in deterministic cycles using `tracking_mode
 - Do not assign a new task to a tester before reviewer result is known for tester's current task.
 - Worker prompts must include complete branch/worktree/task acceptance context.
 - Worker prompts must include explicit start anchor (`start_from_branch`, `start_from_commit`) for every unit.
+- Workstation preparation calls must always pass explicit `--worktrees-parent`:
+  - use `worktrees_parent` input when provided
+  - otherwise derive `<repo-parent>/.<repo-name>-workstations` from `repo_root`
 - Default dispatch target must be Optimus worker set (`optimus-fullstack-developer`, `optimus-fullstack-tester`, `optimus-reviewer`) unless user overrides it.
 - Worker Codex profile assignment must be deterministic and persisted per worker thread.
 - Do not silently move a running/reused worker thread to a different Codex profile unless user explicitly updates the profile policy.
