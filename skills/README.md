@@ -7,6 +7,7 @@ This folder stores portable skill definitions used by agents in this repository.
 - `blocker-escalate-to-agents`
 - `cycle-tick`
 - `dev-benchmark-runner`
+- `dev-check-bundle`
 - `dev-ephemeral-db-runner`
 - `dev-openapi-client-sync`
 - `dispatch-worker-packet`
