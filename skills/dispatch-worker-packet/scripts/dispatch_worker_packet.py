@@ -346,9 +346,9 @@ class ThreadDispatchRunner:
             for mcp in cfg.mcp_allowlist:
                 cmd.extend(["--enable-only-mcp", mcp])
 
-        cmd.extend(["--extra-arg", "--sandbox-mode", "--extra-arg", cfg.sandbox_mode])
+        cmd.extend([f"--extra-arg=--sandbox", f"--extra-arg={cfg.sandbox_mode}"])
         for d in cfg.sandbox_add_dirs:
-            cmd.extend(["--extra-arg", "--sandbox-add-dir", "--extra-arg", d])
+            cmd.extend([f"--extra-arg=--add-dir", f"--extra-arg={d}"])
 
         run = subprocess.run(cmd, cwd=str(cfg.repo_root), capture_output=True, text=True, check=False)
         if run.returncode != 0:

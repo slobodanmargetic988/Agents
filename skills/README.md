@@ -6,6 +6,7 @@ This folder stores portable skill definitions used by agents in this repository.
 - `codex-rate-snapshot`
 - `blocker-escalate-to-agents`
 - `cycle-tick`
+- `custom-thread-spawner`
 - `dev-benchmark-runner`
 - `dev-check-bundle`
 - `dev-handoff-summary-builder`
