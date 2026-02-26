@@ -278,6 +278,51 @@ def render_packet(cfg: DispatchInput) -> str:
     )
 
 
+def ensure_worktree_runtime_prereqs(cfg: DispatchInput) -> dict[str, Any]:
+    """Ensure standard runtime prerequisites exist in the worker worktree.
+
+    This keeps workstation setup deterministic even after force-reset cycles.
+    Missing links are created as symlinks to the canonical repo-root artifacts.
+    Existing files/directories are never replaced.
+    """
+
+    mappings: list[tuple[str, Path]] = [
+        (".venv", cfg.repo_root / ".venv"),
+        (".env", cfg.repo_root / ".env"),
+        ("node_modules", cfg.repo_root / "node_modules"),
+        ("web/nuxt-app/node_modules", cfg.repo_root / "web/nuxt-app/node_modules"),
+        ("output/playwright/auth", cfg.repo_root / "output/playwright/auth"),
+    ]
+
+    out: dict[str, Any] = {
+        "linked": [],
+        "skipped_existing": [],
+        "missing_target": [],
+        "errors": [],
+    }
+
+    for rel_path, source in mappings:
+        target = (cfg.worktree_root / rel_path).resolve(strict=False)
+        source_resolved = source.resolve(strict=False)
+
+        if target.exists() or target.is_symlink():
+            out["skipped_existing"].append(rel_path)
+            continue
+
+        if not source_resolved.exists():
+            out["missing_target"].append(rel_path)
+            continue
+
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.symlink_to(source_resolved)
+            out["linked"].append(rel_path)
+        except OSError as exc:
+            out["errors"].append({"path": rel_path, "message": str(exc)})
+
+    return out
+
+
 def packet_path(cfg: DispatchInput) -> Path:
     prompts_dir = cfg.repo_root / "reports" / "optimus-prime" / "prompts"
     filename = f"packet-{_slug(cfg.task_identifier)}-{cfg.slot}-v{cfg.packet_version}-{now_compact_utc()}.md"
@@ -544,7 +589,14 @@ def build_result(cfg: DispatchInput, packet: Path) -> dict[str, Any]:
             "pid": None,
             "dispatch_log": None,
         },
+        "worktree_prereq_sync": {
+            "linked": [],
+            "skipped_existing": [],
+            "missing_target": [],
+            "errors": [],
+        },
         "state_updates": {
+            "worktree_prereqs": "not_started",
             "worker_registry": "not_started",
             "handoff_log": "not_started",
             "branch_lineage": "not_started",
@@ -580,6 +632,7 @@ def run_dispatch_worker_packet(cfg: DispatchInput, dispatcher: Dispatcher | None
             "dispatch_log": None,
         }
         result["state_updates"] = {
+            "worktree_prereqs": "skipped_dry_run",
             "worker_registry": "skipped_dry_run",
             "handoff_log": "skipped_dry_run",
             "branch_lineage": "skipped_dry_run",
@@ -600,6 +653,30 @@ def run_dispatch_worker_packet(cfg: DispatchInput, dispatcher: Dispatcher | None
             }
         )
         return result
+
+    prereq_sync = ensure_worktree_runtime_prereqs(cfg)
+    result["worktree_prereq_sync"] = prereq_sync
+    if prereq_sync.get("errors"):
+        result["state_updates"]["worktree_prereqs"] = "failed_warning"
+        result["warnings"].append(
+            {
+                "code": "worktree_prereq_sync_failed",
+                "message": "One or more worktree prerequisite symlinks could not be created",
+                "stage": "worktree_prereq_sync",
+                "details": prereq_sync,
+            }
+        )
+    else:
+        result["state_updates"]["worktree_prereqs"] = "applied"
+        if prereq_sync.get("missing_target"):
+            result["warnings"].append(
+                {
+                    "code": "worktree_prereq_source_missing",
+                    "message": "Some prerequisite sources were missing in repo_root; dispatch continued",
+                    "stage": "worktree_prereq_sync",
+                    "details": prereq_sync,
+                }
+            )
 
     try:
         write_text_file(packet, packet_content)
