@@ -326,6 +326,7 @@ class ThreadDispatchRunner:
 
     def dispatch(self, cfg: DispatchInput, packet_path: Path) -> dict[str, Any]:
         script = self._script_path()
+        use_danger_full_access = cfg.sandbox_mode == "danger-full-access"
         cmd = [
             "python3",
             str(script),
@@ -335,6 +336,13 @@ class ThreadDispatchRunner:
             str(packet_path),
             "--background",
         ]
+
+        # `codex exec --full-auto` currently forces workspace-write sandboxing.
+        # For worker packets that require danger-full-access, disable the helper
+        # alias and pass the dedicated bypass flag explicitly so the spawned
+        # worker actually runs unsandboxed as requested.
+        if use_danger_full_access:
+            cmd.append("--no-full-auto")
 
         codex_home = resolve_codex_home_from_alias(cfg.codex_profile_alias)
         if codex_home is not None:
@@ -346,7 +354,10 @@ class ThreadDispatchRunner:
             for mcp in cfg.mcp_allowlist:
                 cmd.extend(["--enable-only-mcp", mcp])
 
-        cmd.extend([f"--extra-arg=--sandbox", f"--extra-arg={cfg.sandbox_mode}"])
+        if use_danger_full_access:
+            cmd.extend(["--extra-arg=--dangerously-bypass-approvals-and-sandbox"])
+        else:
+            cmd.extend([f"--extra-arg=--sandbox", f"--extra-arg={cfg.sandbox_mode}"])
         for d in cfg.sandbox_add_dirs:
             cmd.extend([f"--extra-arg=--add-dir", f"--extra-arg={d}"])
 

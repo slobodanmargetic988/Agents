@@ -22,6 +22,7 @@ The skill enforces:
 - clean reset to requested branch and base ref
 - optional auto-fallback when a branch is already checked out elsewhere
 - optional JSON output for orchestrators
+- static `agent-instructions` output field on successful `create_new_slot` actions
 - optional bulk repair of all existing managed slots
 
 ## Script

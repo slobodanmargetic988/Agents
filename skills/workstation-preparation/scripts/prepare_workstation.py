@@ -14,6 +14,11 @@ from pathlib import Path
 
 MAX_WORKSTATIONS = 10
 SLOT_RE = re.compile(r"^workstation-(?:[1-9]|10)$")
+AGENT_INSTRUCTIONS = (
+    "Next step: if this project depends on generated dependency folders "
+    "(for example node_modules, .venv, vendor), create a symlink in this workstation "
+    "to the source repo's dependency folder before running build/test commands."
+)
 
 
 @dataclass
@@ -188,6 +193,12 @@ def payload_base(
     }
 
 
+def with_agent_instructions(payload: dict[str, object]) -> dict[str, object]:
+    next_payload = dict(payload)
+    next_payload["agent-instructions"] = AGENT_INSTRUCTIONS
+    return next_payload
+
+
 def emit_text(payload: dict[str, object]) -> None:
     if payload.get("ok"):
         print(f"[workstation] repo_root={payload.get('repo_root')}")
@@ -217,6 +228,8 @@ def emit_text(payload: dict[str, object]) -> None:
                 )
         if payload.get("message"):
             print(f"[workstation] {payload.get('message')}")
+        if payload.get("agent-instructions"):
+            print(f"[workstation] agent-instructions={payload.get('agent-instructions')}")
         return
 
     if payload.get("repo_root"):
@@ -600,12 +613,14 @@ def main() -> int:
             else "dry-run: would create new slot"
         )
         return emit(
-            {
+            with_agent_instructions(
+                {
                 **context,
                 "ok": True,
                 "action": "create_new_slot",
                 "message": message,
-            },
+                }
+            ),
             args.output,
         )
 
@@ -628,12 +643,14 @@ def main() -> int:
         return fail(exc.stderr.strip() or str(exc), args.output, context)
 
     return emit(
-        {
+        with_agent_instructions(
+            {
             **context,
             "ok": True,
             "action": "create_new_slot",
             "message": "new slot created",
-        },
+            }
+        ),
         args.output,
     )
 
