@@ -47,6 +47,13 @@ def make_cfg(root: Path, **overrides):
         mcp_allowlist=overrides.get("mcp_allowlist", []),
         sandbox_mode=overrides.get("sandbox_mode", "danger-full-access"),
         sandbox_add_dirs=overrides.get("sandbox_add_dirs", []),
+        runtime_strategy=overrides.get("runtime_strategy"),
+        runtime_base_url=overrides.get("runtime_base_url"),
+        tester_must_not_start_runtime=overrides.get("tester_must_not_start_runtime"),
+        test_train_mode=overrides.get("test_train_mode", "off"),
+        wave_id=overrides.get("wave_id"),
+        deployed_test_commit=overrides.get("deployed_test_commit"),
+        test_lane_account=overrides.get("test_lane_account"),
         dry_run=overrides.get("dry_run", False),
         cycle_note=overrides.get("cycle_note", None),
     )
@@ -118,6 +125,10 @@ class DispatchWorkerPacketTests(unittest.TestCase):
             lineage = json.loads((root / "reports" / "optimus-prime" / "BRANCH_LINEAGE.json").read_text(encoding="utf-8"))
             self.assertTrue(len(lineage["entries"]) >= 1)
 
+            thread_history = (root / "reports" / "optimus-prime" / "THREAD_HISTORY.log").read_text(encoding="utf-8")
+            self.assertIn("slot | worker type | thread-id", thread_history)
+            self.assertIn("dev-1 | developer | unknown", thread_history)
+
     def test_dispatch_failure_keeps_registry_non_running(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -161,6 +172,50 @@ class DispatchWorkerPacketTests(unittest.TestCase):
             with self.assertRaises(MODULE.ToolError) as ctx:
                 MODULE.validate_policy(cfg)
             self.assertEqual(ctx.exception.code, "validation_error")
+
+    def test_test_train_mode_requires_hosted_runtime_for_tester(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = make_cfg(
+                Path(tmp),
+                slot="test-1",
+                role="tester",
+                branch_name="codex/test-1/MYO-156",
+                test_train_mode="final-stage",
+                runtime_strategy="external_url",
+                runtime_base_url="https://shared.example.test",
+                tester_must_not_start_runtime=False,
+            )
+            with self.assertRaises(MODULE.ToolError) as ctx:
+                MODULE.validate_policy(cfg)
+            self.assertEqual(ctx.exception.code, "validation_error")
+
+    def test_train_mode_dispatch_writes_wave_fields_to_handoff(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cfg = make_cfg(
+                root,
+                slot="test-1",
+                role="tester",
+                branch_name="codex/test-1/MYO-156",
+                test_train_mode="forced-shared-env",
+                runtime_strategy="external_url",
+                runtime_base_url="https://shared.example.test",
+                tester_must_not_start_runtime=True,
+                wave_id="wave-0007",
+                deployed_test_commit="abc1234",
+                test_lane_account="acct-02",
+            )
+            out = MODULE.run_dispatch_worker_packet(cfg, dispatcher=FakeDispatcher())
+            self.assertTrue(out["ok"])
+
+            handoff_line = (
+                root / "reports" / "optimus-prime" / "HANDOFF_LOG.jsonl"
+            ).read_text(encoding="utf-8").strip().splitlines()[-1]
+            handoff = json.loads(handoff_line)
+            self.assertEqual(handoff["wave_id"], "wave-0007")
+            self.assertEqual(handoff["deployed_test_commit"], "abc1234")
+            self.assertEqual(handoff["test_lane_account"], "acct-02")
+            self.assertTrue(handoff["tester_must_not_start_runtime"])
 
 
 if __name__ == "__main__":

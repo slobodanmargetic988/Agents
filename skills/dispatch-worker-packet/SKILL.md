@@ -15,7 +15,8 @@ Use this skill to replace manual multi-step dispatch flow:
 3. update `WORKER_REGISTRY.json`
 4. append `HANDOFF_LOG.jsonl`
 5. update `BRANCH_LINEAGE.json`
-6. optional cycle note append
+6. append `THREAD_HISTORY.log`
+7. optional cycle note append
 
 ## Script
 
@@ -40,6 +41,13 @@ Use this skill to replace manual multi-step dispatch flow:
   "mcp_allowlist": ["context7", "playwright", "chrome_devtools"],
   "sandbox_mode": "workspace-write|danger-full-access",
   "sandbox_add_dirs": ["string"],
+  "runtime_strategy": "none|external_url|shared_runtime|isolated_runtime",
+  "runtime_base_url": "https://shared-test.example.com",
+  "tester_must_not_start_runtime": true,
+  "test_train_mode": "off|final-stage|forced-shared-env",
+  "wave_id": "wave-0007",
+  "deployed_test_commit": "abc1234",
+  "test_lane_account": "acct-02",
   "dry_run": false
 }
 ```
@@ -54,6 +62,10 @@ Optional:
 - `enable-only` requires a non-empty allowlist.
 - Branch must match slot prefix `codex/<slot>/...`.
 - `start_from_commit` must be a 7-40 hex SHA.
+- In `test_train_mode` (`final-stage` / `forced-shared-env`), tester packets must set:
+  - `tester_must_not_start_runtime=true`
+  - `runtime_strategy=external_url|shared_runtime`
+  - non-empty `runtime_base_url`
 
 ## Packet Requirements Included
 

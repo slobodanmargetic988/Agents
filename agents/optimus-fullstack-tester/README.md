@@ -14,6 +14,7 @@ Validate Optimus-assigned developer units in `automated-handoff` mode and return
   - `needs_dev_fix`
   - `blocked`
 - Re-test developer rework for the same task when reassigned.
+- In shared test-train mode, execute flow validation only against shared hosted runtime URL; do not boot local app/backend.
 
 ## Out of Scope
 - Updating Linear status/comments directly.
@@ -154,6 +155,10 @@ Validate Optimus-assigned developer units in `automated-handoff` mode and return
 - Never run tests on ambiguous branch bases; anchor must match packet lineage.
 - Do not reuse previous task DB state for DB-backed runtime validation; start from fresh reset/migrate/seed for each task.
 - Tester runtime should be unsandboxed by default; if sandboxed due explicit user instruction, report limited evidence and return `blocked` when required runtime checks cannot be executed.
+- When packet sets `test_train_mode=final-stage|forced-shared-env`, require:
+  - `tester_must_not_start_runtime=true`
+  - `runtime_strategy=external_url|shared_runtime`
+  - non-empty `runtime_base_url`
 
 ## Validation
 - Test packet fields are complete.

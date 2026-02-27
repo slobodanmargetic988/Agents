@@ -23,6 +23,7 @@ ROLES = {"developer", "tester", "reviewer", "flex-tester"}
 MCP_MODES = {"disable-all", "enable-only"}
 FORBIDDEN_WORKER_MCPS = {"linear", "linear_sse"}
 SANDBOX_MODES = {"workspace-write", "danger-full-access"}
+TEST_TRAIN_MODES = {"off", "final-stage", "forced-shared-env"}
 
 
 class ToolError(Exception):
@@ -50,6 +51,13 @@ class DispatchInput:
     mcp_allowlist: list[str]
     sandbox_mode: str
     sandbox_add_dirs: list[str]
+    runtime_strategy: str | None
+    runtime_base_url: str | None
+    tester_must_not_start_runtime: bool | None
+    test_train_mode: str
+    wave_id: str | None
+    deployed_test_commit: str | None
+    test_lane_account: str | None
     dry_run: bool
     cycle_note: str | None
 
@@ -105,6 +113,22 @@ def _list_of_str(data: dict[str, Any], key: str, *, required: bool = False) -> l
     return out
 
 
+def _optional_bool(value: Any) -> bool | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    if isinstance(value, str):
+        text = value.strip().lower()
+        if text in {"1", "true", "yes", "y", "on"}:
+            return True
+        if text in {"0", "false", "no", "n", "off"}:
+            return False
+    raise ToolError("input_error", "tester_must_not_start_runtime must be boolean-like", stage="input")
+
+
 def validate_slot_role(slot: str, role: str) -> None:
     if slot.startswith("dev-") and role != "developer":
         raise ToolError("validation_error", f"slot '{slot}' only supports role 'developer'", stage="validate")
@@ -138,6 +162,33 @@ def validate_policy(cfg: DispatchInput) -> None:
 
     if cfg.sandbox_mode not in SANDBOX_MODES:
         raise ToolError("validation_error", f"invalid sandbox_mode '{cfg.sandbox_mode}'", stage="validate")
+
+    if cfg.test_train_mode not in TEST_TRAIN_MODES:
+        raise ToolError(
+            "validation_error",
+            f"test_train_mode must be one of: {', '.join(sorted(TEST_TRAIN_MODES))}",
+            stage="validate",
+        )
+
+    if cfg.role in {"tester", "flex-tester"} and cfg.test_train_mode != "off":
+        if cfg.tester_must_not_start_runtime is not True:
+            raise ToolError(
+                "validation_error",
+                "tester packets in test-train mode must set tester_must_not_start_runtime=true",
+                stage="validate",
+            )
+        if cfg.runtime_strategy not in {"external_url", "shared_runtime"}:
+            raise ToolError(
+                "validation_error",
+                "tester packets in test-train mode require runtime_strategy=external_url|shared_runtime",
+                stage="validate",
+            )
+        if not isinstance(cfg.runtime_base_url, str) or not cfg.runtime_base_url.strip():
+            raise ToolError(
+                "validation_error",
+                "tester packets in test-train mode require runtime_base_url",
+                stage="validate",
+            )
 
     expected_prefix = f"codex/{cfg.slot}/"
     if not cfg.branch_name.startswith(expected_prefix):
@@ -211,6 +262,17 @@ def config_from_args(args: argparse.Namespace) -> DispatchInput:
             if args.sandbox_add_dirs is None
             else [item.strip() for item in args.sandbox_add_dirs if item.strip()]
         ),
+        runtime_strategy=((args.runtime_strategy or data.get("runtime_strategy") or "").strip() or None),
+        runtime_base_url=((args.runtime_base_url or data.get("runtime_base_url") or "").strip() or None),
+        tester_must_not_start_runtime=(
+            _optional_bool(data.get("tester_must_not_start_runtime"))
+            if args.tester_must_not_start_runtime is None
+            else bool(args.tester_must_not_start_runtime)
+        ),
+        test_train_mode=((args.test_train_mode or data.get("test_train_mode") or "off").strip() or "off"),
+        wave_id=((args.wave_id or data.get("wave_id") or "").strip() or None),
+        deployed_test_commit=((args.deployed_test_commit or data.get("deployed_test_commit") or "").strip() or None),
+        test_lane_account=((args.test_lane_account or data.get("test_lane_account") or "").strip() or None),
         dry_run=bool(data.get("dry_run", False) or args.dry_run),
         cycle_note=(args.cycle_note if args.cycle_note is not None else data.get("cycle_note")),
     )
@@ -243,6 +305,15 @@ def render_packet(cfg: DispatchInput) -> str:
     mcp_line = "none" if cfg.mcp_mode == "disable-all" else ", ".join(cfg.mcp_allowlist)
     criteria_lines = "\n".join(f"- {item}" for item in cfg.acceptance_criteria)
     sandbox_dirs = "none" if not cfg.sandbox_add_dirs else ", ".join(cfg.sandbox_add_dirs)
+    runtime_strategy = cfg.runtime_strategy or "none"
+    runtime_base_url = cfg.runtime_base_url or "none"
+    tester_no_local_runtime = (
+        "true"
+        if cfg.tester_must_not_start_runtime is True
+        else "false"
+        if cfg.tester_must_not_start_runtime is False
+        else "unset"
+    )
 
     return (
         f"# Worker Packet v{cfg.packet_version}\n"
@@ -260,6 +331,13 @@ def render_packet(cfg: DispatchInput) -> str:
         f"mcp_allowlist: {mcp_line}\n"
         f"sandbox_mode: {cfg.sandbox_mode}\n"
         f"sandbox_add_dirs: {sandbox_dirs}\n\n"
+        f"runtime_strategy: {runtime_strategy}\n"
+        f"runtime_base_url: {runtime_base_url}\n"
+        f"tester_must_not_start_runtime: {tester_no_local_runtime}\n"
+        f"test_train_mode: {cfg.test_train_mode}\n"
+        f"wave_id: {cfg.wave_id or 'none'}\n"
+        f"deployed_test_commit: {cfg.deployed_test_commit or 'none'}\n"
+        f"test_lane_account: {cfg.test_lane_account or 'none'}\n\n"
         f"## Acceptance Criteria\n"
         f"{criteria_lines}\n\n"
         f"## Branch Fallback Policy\n"
@@ -459,6 +537,30 @@ def append_jsonl(path: Path, payload: dict[str, Any]) -> None:
         fh.write("\n")
 
 
+def append_thread_history(path: Path, cfg: DispatchInput, dispatch: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    raw = dispatch.get("raw")
+    thread_id = None
+    if isinstance(raw, dict):
+        for key in ("thread_id", "session_id", "conversation_id", "thread"):
+            value = raw.get(key)
+            if isinstance(value, str) and value.strip():
+                thread_id = value.strip()
+                break
+    if not thread_id:
+        thread_id = "unknown"
+
+    header = "slot | worker type | thread-id\n"
+    line = f"{cfg.slot} | {cfg.role} | {thread_id}\n"
+
+    if not path.exists():
+        path.write_text(header + line, encoding="utf-8")
+        return
+
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(line)
+
+
 def update_worker_registry(path: Path, cfg: DispatchInput, packet: Path, dispatch: dict[str, Any]) -> None:
     default_registry = {"workers": []}
     data = read_json_or_default(path, default_registry)
@@ -480,6 +582,13 @@ def update_worker_registry(path: Path, cfg: DispatchInput, packet: Path, dispatc
         "mcp_allowlist": cfg.mcp_allowlist,
         "sandbox_mode": cfg.sandbox_mode,
         "sandbox_add_dirs": cfg.sandbox_add_dirs,
+        "runtime_strategy": cfg.runtime_strategy,
+        "runtime_base_url": cfg.runtime_base_url,
+        "tester_must_not_start_runtime": cfg.tester_must_not_start_runtime,
+        "test_train_mode": cfg.test_train_mode,
+        "wave_id": cfg.wave_id,
+        "deployed_test_commit": cfg.deployed_test_commit,
+        "test_lane_account": cfg.test_lane_account,
         "worktree_root": str(cfg.worktree_root),
         "updated_at": utc_now_iso(),
     }
@@ -600,6 +709,7 @@ def build_result(cfg: DispatchInput, packet: Path) -> dict[str, Any]:
             "worker_registry": "not_started",
             "handoff_log": "not_started",
             "branch_lineage": "not_started",
+            "thread_history": "not_started",
             "cycle_log_note": cycle_note_state,
         },
         "branch": cfg.branch_name,
@@ -636,6 +746,7 @@ def run_dispatch_worker_packet(cfg: DispatchInput, dispatcher: Dispatcher | None
             "worker_registry": "skipped_dry_run",
             "handoff_log": "skipped_dry_run",
             "branch_lineage": "skipped_dry_run",
+            "thread_history": "skipped_dry_run",
             "cycle_log_note": "skipped_dry_run" if cfg.cycle_note else "not_requested",
         }
         result["warnings"].append(
@@ -716,6 +827,7 @@ def run_dispatch_worker_packet(cfg: DispatchInput, dispatcher: Dispatcher | None
     registry_path = reports_root / "WORKER_REGISTRY.json"
     handoff_path = reports_root / "HANDOFF_LOG.jsonl"
     lineage_path = reports_root / "BRANCH_LINEAGE.json"
+    thread_history_path = reports_root / "THREAD_HISTORY.log"
     cycle_path = reports_root / "CYCLE_LOG.jsonl"
 
     try:
@@ -756,6 +868,13 @@ def run_dispatch_worker_packet(cfg: DispatchInput, dispatcher: Dispatcher | None
         "mcp_allowlist": cfg.mcp_allowlist,
         "sandbox_mode": cfg.sandbox_mode,
         "sandbox_add_dirs": cfg.sandbox_add_dirs,
+        "runtime_strategy": cfg.runtime_strategy,
+        "runtime_base_url": cfg.runtime_base_url,
+        "tester_must_not_start_runtime": cfg.tester_must_not_start_runtime,
+        "test_train_mode": cfg.test_train_mode,
+        "wave_id": cfg.wave_id,
+        "deployed_test_commit": cfg.deployed_test_commit,
+        "test_lane_account": cfg.test_lane_account,
         "status": "started" if dispatch["dispatch_started"] else "failed",
     }
 
@@ -788,6 +907,20 @@ def run_dispatch_worker_packet(cfg: DispatchInput, dispatcher: Dispatcher | None
                 "message": msg,
                 "stage": "branch_lineage",
                 "path": str(lineage_path),
+            }
+        )
+
+    try:
+        append_thread_history(thread_history_path, cfg, dispatch)
+        result["state_updates"]["thread_history"] = "applied"
+    except OSError as exc:
+        result["state_updates"]["thread_history"] = "failed_warning"
+        result["warnings"].append(
+            {
+                "code": "thread_history_append_failed",
+                "message": f"Failed to append thread history: {exc}",
+                "stage": "thread_history",
+                "path": str(thread_history_path),
             }
         )
 
@@ -837,6 +970,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--mcp-allowlist", action="append")
     parser.add_argument("--sandbox-mode")
     parser.add_argument("--sandbox-add-dirs", action="append")
+    parser.add_argument("--runtime-strategy")
+    parser.add_argument("--runtime-base-url")
+    parser.add_argument("--tester-must-not-start-runtime", dest="tester_must_not_start_runtime", action="store_true")
+    parser.add_argument("--allow-tester-local-runtime", dest="tester_must_not_start_runtime", action="store_false")
+    parser.set_defaults(tester_must_not_start_runtime=None)
+    parser.add_argument("--test-train-mode")
+    parser.add_argument("--wave-id")
+    parser.add_argument("--deployed-test-commit")
+    parser.add_argument("--test-lane-account")
     parser.add_argument("--cycle-note")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--json-pretty", action="store_true")
