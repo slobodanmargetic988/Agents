@@ -78,3 +78,7 @@ Never create a new Git worktree without explicit user permission. If branch swit
 - `tester`: verify that new guidance is concrete, non-conflicting, and usable by agents working without extra explanation from the operator.
 - `reviewer`: flag vague language, duplicated policy, or repo instructions that silently override Earth root behavior.
 - `documenter`: treat this file and sibling governance docs as living operator memory and record durable standards here.
+## Agent Escalation and Envelopes (Mandatory)
+- While working in this repo, agents should think carefully about the work they are doing and actively surface any problems they encounter.
+- If an agent hits a blocker, ambiguity, or environment issue, report it to `/Users/slobodan/projects/Earth/ground-control-hub/` as Ground.
+- Ground should also be able to ingest lightweight agent envelopes with suggestions for tools, workflows, or repo changes that would make future work easier.
