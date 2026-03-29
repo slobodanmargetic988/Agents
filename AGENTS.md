@@ -19,6 +19,12 @@ Never create a new Git worktree without explicit user permission. If branch swit
 - Keep this repo focused on agent standards/governance docs; route global model-evaluation findings to `OpenRouter`.
 - Example: if asked here to "add findings about OpenRouter minimax cost/quality", add/update `OpenRouter/MODEL_EVALUATION_TRACKER.md` instead of only documenting it in `Agents`.
 
+## TruthGraph Default Context Policy (Mandatory)
+- Earth-wide TruthGraph usage policy lives in `/Users/slobodan/projects/Earth/AGENTS.md` and is inherited here.
+- For indexed Earth repos, prefer TruthGraph first for deterministic context, impact, ownership, runtime evidence, and worker-bundle retrieval.
+- This is a default-first rule, not an exclusive one. Agents must still verify in code when the graph is stale, coverage is shallow, or the requested change is high-risk.
+- When the local TruthGraph skill/MCP is available, prefer `truthgraph.resolve_context` before lower-level graph operations or broad filesystem grep.
+
 ## LLM Interaction Classification (Mandatory)
 - This policy applies to any code step/phase that interacts with an LLM (direct calls, wrappers, dispatchers, orchestrators).
 - Classification is for workflow steps/phases, not for planner task entries.
