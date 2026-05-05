@@ -3,7 +3,7 @@
 ## Blank Template
 ```text
 Agent: sprint-orchestrator-agent
-Goal: Sprint source to orchestrate:
+Goal: Monitor and update execution of existing sprint issues, enforce dependency order, and drive continuous worker dispatch.
 Inputs: Sprint task source:
 Inputs: Agent root path: /agents
 Inputs: Standards source: /agents/agent-making-agent/README.md
@@ -12,32 +12,40 @@ Inputs: tracking_contract_path: /Users/slobodan/Projects/Agents/agents/_shared/T
 Inputs: linear_comment_schema_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
 Inputs: linear_workflow_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md
 Inputs: worktree_policy_path: /Users/slobodan/Projects/Agents/agents/_shared/WORKTREE_POLICY.md
-Inputs: Team capacity constraints:
-Inputs: Merge mode: sequential
+Inputs: dispatch_skill_path: /Users/slobodan/.codex/skills/thread-dispatch/SKILL.md
+Inputs: sleep_skill_path: /Users/slobodan/.codex/skills/sleep/SKILL.md
+Inputs: poll_interval_minutes: 5
+Inputs: merge_mode: sequential
 Inputs: review_required: false
-Inputs: pr_base_branch: main
-Inputs: Handoff policy: developer -> tester -> PR-ready (optional review only when requested)
-Constraints: Planning/orchestration only. Do not execute subagent implementation work. Include `tracking_mode`, `linear_workflow_path`, `worktree_policy_path`, `tracking_contract_path`, and `linear_comment_schema_path` in all generated worker task packets. In `tracking_mode=linear`, post structured `DEV_TASK` / `TEST_TASK` comments on each issue and add `REVIEW_TASK` only when `review_required=true` or explicitly requested. In `tracking_mode=local`, write per-issue packet files under `/reports/issues/<ISSUE-ID>/`. Create PRs for done units and include task description plus expected outcome (from issue/task packet) in each PR body. PR body must be intent-only context and must not include git diff summaries.
-Output: /reports/SPRINT_PLAN.md, /reports/SPRINT_ISSUE_PACKETS.md, /reports/SPRINT_MERGE_PLAN.md, and /reports/SPRINT_MERGE_RESULT.md (optional snapshot only: /reports/SPRINT_EXECUTION_LOG.md)
+Inputs: Team capacity constraints: max 3 developers + 1 tester + 1 reviewer
+Inputs: Developer scaling rule: ready=1-2 -> 1 dev, ready=3-10 -> 2 devs, ready>10 -> 3 devs
+Inputs: Worker slot policy: dedicated worktree per slot; per-task feature branch inside each slot worktree
+Inputs: Start gates: tester starts after first developer DONE, reviewer starts after first tester DONE
+Constraints: Planning/orchestration only. No implementation coding. Use thread-dispatch skill to spawn background workers and sleep skill for 5-minute loop waits. Publish packet-driven assignments and monitor AGENT_EVENT_V1 status comments. Before each sleep, post visible control summary in this orchestrator chat (active workers, task per worker, blockers, next actions).
+Output: /reports/SPRINT_PLAN.md, /reports/SPRINT_AGENT_ACTIVATIONS.md, /reports/SPRINT_EXECUTION_LOG.md, /reports/SPRINT_MERGE_PLAN.md, /reports/SPRINT_MERGE_RESULT.md
 ```
 
 ## Filled Example
 ```text
 Agent: sprint-orchestrator-agent
-Goal: Orchestrate Sprint 24 from Jira backlog export into executable parallel units.
-Inputs: Sprint task source: /inputs/jira/sprint-24.csv
-Inputs: Agent root path: /agents
-Inputs: Standards source: /agents/agent-making-agent/README.md
+Goal: Orchestrate and continuously dispatch MYO-45..MYO-70 with adaptive worker concurrency and strict dependency ordering.
+Inputs: Sprint task source: Linear project "Ouroboros" team "Myownmint" issues MYO-45..MYO-70
+Inputs: Agent root path: /Users/slobodan/Projects/Agents/agents
+Inputs: Standards source: /Users/slobodan/Projects/Agents/agents/agent-making-agent/README.md
 Inputs: tracking_mode: linear
 Inputs: tracking_contract_path: /Users/slobodan/Projects/Agents/agents/_shared/TRACKING_MODE_CONTRACT.md
 Inputs: linear_comment_schema_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_COMMENT_SCHEMA.md
 Inputs: linear_workflow_path: /Users/slobodan/Projects/Agents/agents/_shared/LINEAR_WORKFLOW.md
 Inputs: worktree_policy_path: /Users/slobodan/Projects/Agents/agents/_shared/WORKTREE_POLICY.md
-Inputs: Team capacity constraints: max 6 parallel forks, prioritize platform stability work first.
-Inputs: Merge mode: sequential
+Inputs: dispatch_skill_path: /Users/slobodan/.codex/skills/thread-dispatch/SKILL.md
+Inputs: sleep_skill_path: /Users/slobodan/.codex/skills/sleep/SKILL.md
+Inputs: poll_interval_minutes: 5
+Inputs: merge_mode: sequential
 Inputs: review_required: false
-Inputs: pr_base_branch: main
-Inputs: Handoff policy: developer -> tester -> PR-ready (optional review only when requested)
-Constraints: Planning/orchestration only. Do not execute subagent implementation work. Include `tracking_mode`, `linear_workflow_path`, `worktree_policy_path`, `tracking_contract_path`, and `linear_comment_schema_path` in all generated worker task packets. In `tracking_mode=linear`, post structured `DEV_TASK` / `TEST_TASK` comments on each issue and add `REVIEW_TASK` only when `review_required=true` or explicitly requested. In `tracking_mode=local`, write per-issue packet files under `/reports/issues/<ISSUE-ID>/`. Create PRs for done units and include task description plus expected outcome (from issue/task packet) in each PR body. PR body must be intent-only context and must not include git diff summaries.
-Output: /reports/SPRINT_PLAN.md, /reports/SPRINT_ISSUE_PACKETS.md, /reports/SPRINT_MERGE_PLAN.md, and /reports/SPRINT_MERGE_RESULT.md (optional snapshot only: /reports/SPRINT_EXECUTION_LOG.md)
+Inputs: Team capacity constraints: max 3 developers + 1 tester + 1 reviewer
+Inputs: Developer scaling rule: ready=1-2 -> 1 dev, ready=3-10 -> 2 devs, ready>10 -> 3 devs
+Inputs: Worker slot policy: dedicated worktrees `/Users/slobodan/Projects/Oroboros/.worktrees/dev-1|dev-2|dev-3|test-1|review-1`; task branches `codex/<slot>/<issue-id>`
+Inputs: Start gates: tester starts after first developer DONE, reviewer starts after first tester DONE
+Constraints: Planning/orchestration only. No implementation coding. Launch background workers via thread-dispatch skill and use sleep skill for 5-minute loop. Keep assignments packet-driven on Linear comments. Before every sleep cycle, post visible control summary with worker health and next dispatch.
+Output: /Users/slobodan/Projects/Oroboros/reports/SPRINT_PLAN.md, /Users/slobodan/Projects/Oroboros/reports/SPRINT_AGENT_ACTIVATIONS.md, /Users/slobodan/Projects/Oroboros/reports/SPRINT_EXECUTION_LOG.md, /Users/slobodan/Projects/Oroboros/reports/SPRINT_MERGE_PLAN.md, /Users/slobodan/Projects/Oroboros/reports/SPRINT_MERGE_RESULT.md
 ```

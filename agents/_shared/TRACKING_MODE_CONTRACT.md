@@ -1,5 +1,5 @@
 # Shared Tracking Mode Contract
-Last Updated: 2026-02-16 13:15 CET
+Last Updated: 2026-02-21 01:40 CET
 
 Use this contract to keep agent coordination deterministic with and without Linear.
 
@@ -28,6 +28,8 @@ Use this contract to keep agent coordination deterministic with and without Line
   - `task_identifier`
   - `tracking_mode`
   - `role`
+  - `worker_slot`
+  - `worktree_root`
   - `branch`
   - acceptance criteria / test scope
   - `packet_version`
@@ -37,6 +39,8 @@ Use this contract to keep agent coordination deterministic with and without Line
 - `task_identifier`
 - `role`
 - `event`
+- `worker_slot`
+- `worktree_path`
 - `handoff_to` (when handoff event)
 - `branch`
 - `head_commit`

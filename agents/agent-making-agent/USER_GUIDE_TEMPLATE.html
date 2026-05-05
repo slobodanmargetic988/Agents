@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agent Guide Template</title>
+  <style>
+    :root {
+      --bg-1: #091a2a;
+      --bg-2: #15364f;
+      --bg-3: #f6f4eb;
+      --ink-dark: #102739;
+      --ink-light: #eaf3ff;
+      --accent-a: #ff7a3d;
+      --accent-b: #1db6b1;
+      --accent-c: #ffd166;
+      --card: rgba(255, 255, 255, 0.9);
+      --border: rgba(9, 32, 50, 0.16);
+      --radius: 18px;
+      --shadow: 0 16px 44px rgba(2, 14, 22, 0.22);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Space Grotesk", "Manrope", "Avenir Next", sans-serif;
+      color: var(--ink-dark);
+      background:
+        radial-gradient(1200px 480px at 90% -12%, rgba(29, 182, 177, 0.28), transparent 70%),
+        radial-gradient(920px 420px at -12% 8%, rgba(255, 122, 61, 0.24), transparent 70%),
+        linear-gradient(160deg, var(--bg-3), #f9f9f4 56%, #edf7fb);
+      line-height: 1.55;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 3.4rem 1.1rem 2.5rem;
+      color: var(--ink-light);
+      background: linear-gradient(118deg, var(--bg-1), var(--bg-2));
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -18% -36% auto;
+      width: 430px;
+      height: 430px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 209, 102, 0.3), rgba(255, 209, 102, 0));
+    }
+
+    .container {
+      max-width: 1040px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.9rem, 4.7vw, 3rem);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .subtitle {
+      margin: 0.75rem 0 0;
+      max-width: 760px;
+      color: rgba(234, 243, 255, 0.9);
+      font-size: 1.02rem;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+      margin-top: 1.2rem;
+    }
+
+    .badge {
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      border-radius: 999px;
+      padding: 0.32rem 0.76rem;
+      font-size: 0.82rem;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    main {
+      padding: 1.35rem 1.1rem 3rem;
+    }
+
+    .grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.05rem;
+      box-shadow: var(--shadow);
+    }
+
+    .span-12 { grid-column: span 12; }
+    .span-6 { grid-column: span 6; }
+    .span-4 { grid-column: span 4; }
+
+    h2 {
+      margin: 0.1rem 0 0.7rem;
+      font-size: 1.06rem;
+      letter-spacing: 0.02em;
+      color: #0f2d45;
+    }
+
+    ul {
+      margin: 0.2rem 0 0.5rem 1.1rem;
+      padding: 0;
+    }
+
+    li {
+      margin-bottom: 0.35rem;
+    }
+
+    .flow {
+      background: linear-gradient(90deg, #fff4ec, #edfcfb);
+      border: 1px dashed rgba(13, 55, 85, 0.24);
+      border-radius: 14px;
+      padding: 0.82rem;
+      font-family: "IBM Plex Mono", "JetBrains Mono", monospace;
+      font-size: 0.88rem;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    .snippet {
+      margin: 0;
+      padding: 0.82rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #f7fbff;
+      font-family: "IBM Plex Mono", "JetBrains Mono", monospace;
+      font-size: 0.86rem;
+      overflow-x: auto;
+    }
+
+    @media (max-width: 860px) {
+      .span-6,
+      .span-4 {
+        grid-column: span 12;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="container">
+      <h1>AGENT_NAME</h1>
+      <p class="subtitle">
+        One-line mission summary for this agent. Keep it specific and operational.
+      </p>
+      <div class="badge-row">
+        <span class="badge">Primary Mode: MODE</span>
+        <span class="badge">Scope: SCOPE</span>
+        <span class="badge">Tracking: linear/local</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="container grid">
+      <section class="card span-12">
+        <h2>What This Agent Does</h2>
+        <ul>
+          <li>Primary responsibility 1.</li>
+          <li>Primary responsibility 2.</li>
+          <li>Primary responsibility 3.</li>
+        </ul>
+      </section>
+
+      <section class="card span-6">
+        <h2>When To Use</h2>
+        <ul>
+          <li>Trigger condition 1.</li>
+          <li>Trigger condition 2.</li>
+          <li>Trigger condition 3.</li>
+        </ul>
+      </section>
+
+      <section class="card span-6">
+        <h2>Required Inputs</h2>
+        <ul>
+          <li><code>input_name_1</code>: why it is required.</li>
+          <li><code>input_name_2</code>: why it is required.</li>
+          <li><code>input_name_3</code>: why it is required.</li>
+        </ul>
+      </section>
+
+      <section class="card span-12">
+        <h2>Execution Flow</h2>
+        <div class="flow">DISCOVER -> VALIDATE INPUTS -> EXECUTE CORE STEPS -> VALIDATE OUTPUT -> HANDOFF/COMPLETE</div>
+      </section>
+
+      <section class="card span-12">
+        <h2>Quick Start Prompt</h2>
+        <pre class="snippet">Agent: AGENT_NAME
+Goal:
+Inputs:
+Constraints:
+Output:</pre>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

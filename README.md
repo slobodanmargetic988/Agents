@@ -9,6 +9,14 @@ Instead, this repo stores:
 - Reusable instructions and templates
 - Tutorials for creating and using agents effectively
 
+## Windows Users
+
+If you are running this project on Windows, use the `codex/windows-version` branch, which is maintained with Windows-oriented commands and examples.
+
+## Support This Project
+
+Sponsor on GitHub: [github.com/sponsors/slobodanmargetic988](https://github.com/sponsors/slobodanmargetic988)
+
 ## Project Goals
 
 - Keep agent work structured and easy to browse
@@ -114,3 +122,7 @@ Use **Agent Making Agent** to create a standard template, then build your second
 
 - Made by Slobodan Margetic
 - Contact: slobodanmargetic988@gmail.com
+
+## Sponsors
+
+<!-- sponsors --><!-- sponsors -->

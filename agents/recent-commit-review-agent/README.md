@@ -1,5 +1,5 @@
 # Recent Commit Review Agent
-Last Updated: 2026-02-16 13:55 CET
+Last Updated: 2026-02-21 01:58 CET
 
 ## Mission
 Review recent commits selected by exactly one review-window selector and produce prioritized remediation tasks without changing source code.
@@ -39,6 +39,8 @@ Review recent commits selected by exactly one review-window selector and produce
   - `local_issue_dir` (default: `/reports/issues/<task_identifier>/`)
   - `local_state_path` (default: `<local_issue_dir>/state.yaml`)
   - `local_events_path` (default: `<local_issue_dir>/events.jsonl`)
+  - `branch_name` (expected review branch)
+  - `worktree_root` (default: derived from `git rev-parse --show-toplevel`)
 
 ## Tracking Mode Contract
 - `tracking_mode=linear`:
@@ -56,7 +58,7 @@ Review recent commits selected by exactly one review-window selector and produce
 
 ## Outputs
 - Primary report:
-  - `/reports/issues/<task_identifier>/COMMIT_REVIEW_TASKS.md`
+  - `<worktree_root>/reports/issues/<task_identifier>/COMMIT_REVIEW_TASKS.md`
 - Report sections:
   - Executive Summary
   - Top Urgent Items
@@ -79,15 +81,20 @@ Review recent commits selected by exactly one review-window selector and produce
 3. Load latest role task packet:
    - Linear: newest `AGENT_EVENT_V1` packet with `packet_type=REVIEW_TASK`
    - Local: `/reports/issues/<task_identifier>/REVIEW_TASK.yaml` when present
-4. Resolve commit window from selector.
-5. Collect changed files/hunks for selected commits in read-only mode.
-6. Analyze changes for defects/regressions/maintainability risks.
-7. Normalize findings, merge duplicates, and assign finding IDs (`P0-1`, `P0-2`, ...).
-8. Ensure summaries reference finding IDs and include verification steps for every finding.
-9. Set `NEEDS_MANUAL_VERIFICATION` for ambiguous evidence.
-10. Write report to `/reports/issues/<task_identifier>/COMMIT_REVIEW_TASKS.md`.
-11. In `re-review` mode, re-check only findings marked `RESOLVED` from the report.
-12. Publish outcome event:
+4. Run isolation preflight before any write:
+   - `WORKTREE_ROOT="$(git rev-parse --show-toplevel)"`
+   - if `branch_name` is provided and current branch differs, stop with `blocked`
+   - set `ISSUE_DIR="$WORKTREE_ROOT/reports/issues/<task_identifier>"`
+   - allow writes only under `ISSUE_DIR`
+5. Resolve commit window from selector.
+6. Collect changed files/hunks for selected commits in read-only mode.
+7. Analyze changes for defects/regressions/maintainability risks.
+8. Normalize findings, merge duplicates, and assign finding IDs (`P0-1`, `P0-2`, ...).
+9. Ensure summaries reference finding IDs and include verification steps for every finding.
+10. Set `NEEDS_MANUAL_VERIFICATION` for ambiguous evidence.
+11. Write report under `ISSUE_DIR` only.
+12. In `re-review` mode, re-check only findings marked `RESOLVED` from the report.
+13. Publish outcome event:
    - pass -> `decision: review_passed`, `handoff_to: human_review`
    - fail -> `decision: review_blocked`, `handoff_to: developer`
 
@@ -97,7 +104,9 @@ Review recent commits selected by exactly one review-window selector and produce
 - Preserve existing finding IDs during `re-review`.
 - Summary/review references must use finding IDs.
 - Do not write shared sprint state files.
-- In local mode, write only under `/reports/issues/<task_identifier>/`.
+- Write reports/state/events only under `<worktree_root>/reports/issues/<task_identifier>/`.
+- Never write to an absolute repo path outside current `git rev-parse --show-toplevel`.
+- If current branch does not match assigned review branch, stop and emit `blocked`.
 
 ## Validation
 - Selector contract is valid.
@@ -123,6 +132,9 @@ Review recent commits selected by exactly one review-window selector and produce
 - Missing task packet:
   - Signal: no usable `REVIEW_TASK` packet in selected tracking mode
   - Action: stop and request orchestrator packet refresh
+- Worktree/branch isolation check fails:
+  - Signal: target write path is outside current worktree root or current branch mismatches assigned review branch
+  - Action: stop immediately, emit `blocked`, and request corrected branch/worktree assignment
 
 ## Definition of Done
 - Inputs pass selector contract (`commits` XOR `since`).

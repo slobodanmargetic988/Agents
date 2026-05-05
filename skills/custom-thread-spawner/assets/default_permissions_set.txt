@@ -1,0 +1,4 @@
+<permissions instructions>
+Filesystem sandboxing defines which files can be read or written. `sandbox_mode` is `danger-full-access`: No filesystem sandboxing - all commands are permitted. Network access is enabled.
+Approval policy is currently never. Do not provide the `sandbox_permissions` for any reason, commands will be rejected.
+</permissions instructions>

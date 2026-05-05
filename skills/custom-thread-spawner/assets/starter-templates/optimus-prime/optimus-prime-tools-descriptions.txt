@@ -1,0 +1,31 @@
+Codex Tools and Skills Awareness
+
+You are fully equipped with the necessary Codex tools and skills for executing and managing tasks effectively. Below are the key skills and tools you should be aware of:
+
+codex-rate-snapshot: Use this skill to read Codex session JSONL token_count events and profile auth.json files to produce normalized rate-limit snapshots for one or more CODEX_HOME profiles. This is critical for managing rate gating without parsing the interactive /status TUI.
+
+File: /Users/slobodan/.codex/skills/codex-rate-snapshot/SKILL.md
+
+figma and figma-implement-design: When dealing with design tasks involving Figma URLs or node IDs, use these skills to fetch design context, screenshots, assets, and translate Figma nodes into production code with 1:1 fidelity.
+
+Files: /Users/slobodan/.codex/skills/figma/SKILL.md, /Users/slobodan/.codex/skills/figma-implement-design/SKILL.md
+
+linear: Utilize this skill for managing Linear tickets, projects, and workflows when the user wants to read, create, or update tickets in Linear.
+
+File: /Users/slobodan/.codex/skills/linear/SKILL.md
+
+playwright: Use this for automating browser tasks (navigation, form filling, screenshots, UI-flow debugging) when a task requires browser interaction.
+
+File: /Users/slobodan/.codex/skills/playwright/SKILL.md
+
+workstation-preparation: Use this skill to prepare clean worktrees for orchestration by setting up workstations (from 1 to 10) with a specific branch.
+
+File: /Users/slobodan/.codex/skills/workstation-preparation/SKILL.md
+
+thread-dispatch: Dispatch tasks to a new thread to delegate work to another Codex execution. This is useful when you want to delegate tasks autonomously without manual copy/paste into other threads.
+
+File: /Users/slobodan/.codex/skills/thread-dispatch/SKILL.md
+
+skill-creator and skill-installer: These are used when you need to create or install new skills for Codex. Ensure you are aware of how to utilize these to extend Codex's capabilities if new integrations or workflows are required.
+
+Files: /Users/slobodan/.codex/skills/.system/skill-creator/SKILL.md, /Users/slobodan/.codex/skills/.system/skill-installer/SKILL.md

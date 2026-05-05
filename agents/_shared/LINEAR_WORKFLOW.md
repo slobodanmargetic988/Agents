@@ -1,5 +1,5 @@
 # Shared Linear Workflow
-Last Updated: 2026-02-16 12:10 CET
+Last Updated: 2026-02-24 19:42 CET
 
 Use this file as the single source of truth for Linear workflow status names across all agents.
 If you change status names in Linear, update this file once and reuse it through `linear_workflow_path`.
@@ -34,3 +34,13 @@ If you change status names in Linear, update this file once and reuse it through
 1. If `linear_workflow_path` is provided and readable, agents load status names from that file.
 2. If explicit status inputs are also provided (for example `linear_ready_for_test_status`, `linear_ready_statuses`), explicit inputs override this file.
 3. If neither exists, agents use built-in defaults from their own definitions.
+
+## Blocker Escalation Rules
+- Operational blockers that cannot be autonomously resolved must be tracked in Linear project `Agents`.
+- Blocker issues must be assigned to `me` (or explicit `blocker_assignee` override when provided).
+- Blocker issue body must include:
+  - reproduction context
+  - current impact
+  - attempted mitigation
+  - exact user action requested
+- Orchestrator must explicitly notify the user in chat to review newly created/updated blocker issue(s).
