@@ -5,3 +5,6 @@
 # Python cache
 __pycache__/
 *.py[cod]
+
+# Local training datasets and raw rollout logs
+/training data/
