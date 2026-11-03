@@ -1,5 +1,7 @@
 # Agents Repository
 
+[![Support me](https://img.shields.io/badge/Support%20me-GitHub%20Sponsors-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/slobodanmargetic988)
+
 This repository is a documentation-first project for building and organizing software agents.
 
 There is no application code here.  
